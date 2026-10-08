@@ -1,0 +1,16 @@
+ios/build/
+ios/out/
+ios/Piatto.xcodeproj/
+ios/Piatto/Info.plist
+ios/Widgets/Info.plist
+ios/build-tests/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+# never commit secrets
+.env
+*.p12
+*.mobileprovision
+ios/Piatto/Data/
+iphone-runs/
+__pycache__/

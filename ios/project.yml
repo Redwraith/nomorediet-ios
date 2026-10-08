@@ -1,0 +1,91 @@
+name: Piatto
+options:
+  bundleIdPrefix: app.piatto
+  deploymentTarget:
+    iOS: "18.0"
+targets:
+  Piatto:
+    type: application
+    platform: iOS
+    sources: [Piatto, Shared]
+    dependencies:
+      - sdk: HealthKit.framework
+      - target: NomoredietWidgets
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios
+        PRODUCT_NAME: Nomorediet
+        MARKETING_VERSION: "4.9.6"
+        CURRENT_PROJECT_VERSION: "35"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: Piatto/Piatto.entitlements
+    info:
+      path: Piatto/Info.plist
+      properties:
+        CFBundleDisplayName: Nomorediet
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: Background
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIStatusBarStyle: UIStatusBarStyleDefault
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Nomorediet usa la fotocamera per i codici a barre, le etichette, la bilancia, le foto dei pasti e delle confezioni e per contare le ripetizioni.
+        NSSpeechRecognitionUsageDescription: Nomorediet trasforma in testo quello che dici quando tieni premuto il pulsante per parlare.
+        NSSupportsLiveActivities: true
+        NSLocationWhenInUseUsageDescription: Nomorediet usa la posizione per riconoscere quando arrivi in palestra e aprire l'allenamento.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Nomorediet controlla solo se entri o esci dalla tua palestra, anche ad app chiusa, per aprirti l'allenamento e ricordarti la creatina. La posizione non lascia l'iPhone.
+        UIBackgroundModes: [processing, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [app.piatto.ios.fooddb]
+        CFBundleURLTypes:
+          - CFBundleURLName: app.piatto.ios
+            CFBundleURLSchemes: [nomorediet]
+        NSPhotoLibraryUsageDescription: Nomorediet usa le foto che scegli per analizzare i pasti.
+        NSHealthShareUsageDescription: Nomorediet legge da Salute (iPhone e Apple Watch) passi, distanza, calorie attive e a riposo, minuti di esercizio, battito, HRV, VO2 max, sonno, peso, grasso corporeo e allenamenti, per calcolare le tue calorie e il piano.
+        NSCalendarsFullAccessUsageDescription: Nomorediet legge dal Calendario la scheda di allenamento che segui (per esempio gli eventi del tuo Google Calendar) per mostrarla nell'app.
+        NSMotionUsageDescription: Nomorediet usa i sensori di movimento dell'iPhone per contare le ripetizioni quando lo scegli tu.
+        NSHealthUpdateUsageDescription: Nomorediet non scrive dati in Salute.
+        NSMicrophoneUsageDescription: Nomorediet usa il microfono solo mentre tieni premuto il pulsante per parlare.
+    scheme:
+      testTargets: [NomoredietTests]
+  NomoredietWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [Widgets, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios.widgets
+        PRODUCT_NAME: NomoredietWidgets
+        MARKETING_VERSION: "4.9.6"
+        CURRENT_PROJECT_VERSION: "35"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_ENTITLEMENTS: Widgets/Widgets.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Nomorediet
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  NomoredietTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: Piatto
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios.tests
+        # the app's product name differs from its target name
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Nomorediet.app/Nomorediet
+        BUNDLE_LOADER: $(TEST_HOST)
+        SWIFT_VERSION: "5.0"

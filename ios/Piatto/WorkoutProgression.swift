@@ -1,0 +1,244 @@
+import Foundation
+
+/// Progression by month of the cycle, as in the user's Google Calendar plan:
+///   month 1 → the plan's sets and reps, +1 rep or +2.5 kg a week
+///   month 2 → tempo 3-1-1-0, loads −10%; fundamentals 4×8–10, complementary 3×12–15, isolation 3×15
+///   month 3 → fundamentals 4×6–8 + rest-pause, complementary 3×10–12, isolation 3×12–15, double dropsets, RIR 0
+///   deload weeks → 60% load, fundamentals 3×8, complementary 2×10, isolation 2×12, no dropsets, never to failure
+enum Progression {
+    enum Phase: Equatable {
+        case month(Int), deload, finished
+
+        var title: String {
+            switch self {
+            case .month(1): "Mese 1 · serie base, +1 ripetizione o +2,5 kg a settimana"
+            case .month(2): "Mese 2 · tempo 3-1-1-0, carichi −10%"
+            case .month(3): "Mese 3 · intensificatori: rest-pause e dropset doppi"
+            case .month(let n): "Mese \(n)"
+            case .deload: "Settimana di scarico · carico al 60%, mai a cedimento"
+            case .finished: "Ciclo finito · aggiorna la scheda dal Calendario"
+            }
+        }
+    }
+
+    static func phase(on date: Date = .now, cycle: Cycle = PlanStore.shared.cycle) -> Phase {
+        let day = Calendar.current.startOfDay(for: date)
+        if cycle.deloads.contains(where: { $0.contains(day) }) { return .deload }
+        if day <= cycle.month1End { return .month(1) }
+        if cycle.month2.contains(day) { return .month(2) }
+        if cycle.month3.contains(day) { return .month(3) }
+        return day > cycle.month3.upperBound ? .finished : .month(1)
+    }
+
+    static func title(_ phase: Phase = phase()) -> String { phase.title }
+
+    /// The exercise as it should be done in this phase.
+    static func apply(_ exercise: Exercise, phase: Phase) -> Exercise {
+        var e = exercise
+        switch (phase, exercise.role) {
+        case (.month(2), .fondamentale): e.sets = 4; e.reps = "8–10"
+        case (.month(2), .complementare): e.sets = 3; e.reps = "12–15"
+        case (.month(2), .isolamento): e.sets = 3; e.reps = "15"
+        case (.month(3), .fondamentale): e.sets = 4; e.reps = "6–8"; e.rir = "0"
+        case (.month(3), .complementare): e.sets = 3; e.reps = "10–12"; e.rir = "0–1"
+        case (.month(3), .isolamento): e.sets = 3; e.reps = "12–15"; e.rir = "0"
+        case (.deload, .fondamentale): e.sets = 3; e.reps = "8"; e.rir = "3+"
+        case (.deload, .complementare): e.sets = 2; e.reps = "10"; e.rir = "3+"
+        case (.deload, .isolamento): e.sets = 2; e.reps = "12"; e.rir = "3+"
+        default: break
+        }
+        if phase == .deload { e.dropset = nil }
+        if phase == .month(3), let d = e.dropset { e.dropset = d + " doppio" }
+        return e
+    }
+
+    /// What changes this month for this exercise.
+    static func note(_ exercise: Exercise, phase: Phase) -> String? {
+        var parts: [String] = []
+        switch phase {
+        case .month(1): parts.append("+1 ripetizione o +2,5 kg rispetto alla settimana scorsa.")
+        case .month(2): parts.append("Tempo 3-1-1-0: 3 s a scendere, 1 s di pausa in basso, 1 s a salire. Carico −10% rispetto al mese 1.")
+            if exercise.role == .isolamento { parts.append("Eccentrica di 3 s.") }
+        case .month(3):
+            if exercise.role == .fondamentale { parts.append("Ultima serie in rest-pause: 15 s di pausa e altre ripetizioni.") }
+            if exercise.dropset != nil { parts.append("Dropset doppio: cedimento → −25% → cedimento → −25% → cedimento.") }
+        case .deload: parts.append("Scarico: 60% del carico solito, niente dropset né tempo lento, mai a cedimento. Non segnare record.")
+        case .finished: parts.append("Il ciclo è finito: aggiorna la scheda dal Calendario quando hai quella nuova.")
+        case .month: break
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
+    }
+
+    /// Roles for a plan written without them: the first pair is fundamental, single-joint moves are isolation.
+    static func withRoles(_ days: [WorkoutDay]) -> [WorkoutDay] {
+        days.map { day in
+            var day = day
+            for b in day.blocks.indices {
+                for e in day.blocks[b].exercises.indices {
+                    let ex = day.blocks[b].exercises[e]
+                    day.blocks[b].exercises[e].role = b == 0 ? .fondamentale : PlanParser.isCompound(ex.name) ? .complementare : .isolamento
+                }
+            }
+            return day
+        }
+    }
+}
+
+/// Alternatives for each movement pattern, for when a machine is busy. Same muscles, same animation pattern.
+enum ExerciseSwaps {
+    struct Option: Hashable {
+        var name: String
+        var pattern: String
+        var cue: String
+    }
+
+    static let options: [String: [Option]] = [
+        "push_h": [
+            Option(name: "Panca piana con manubri", pattern: "push_h", cue: "Scapole strette, scendi fino al petto."),
+            Option(name: "Chest press alla macchina", pattern: "push_h", cue: "Maniglie all'altezza del petto, spingi senza bloccare i gomiti."),
+            Option(name: "Panca inclinata al multipower", pattern: "push_h", cue: "Panca a 30°, bilanciere sulla parte alta del petto."),
+            Option(name: "Piegamenti sulle braccia", pattern: "push_h", cue: "Corpo rigido, petto fino a terra; zavorra se troppo facili."),
+        ],
+        "fly": [
+            Option(name: "Croci ai cavi", pattern: "fly", cue: "Cavi all'altezza delle spalle, apri ad arco con gomiti morbidi."),
+            Option(name: "Pec deck", pattern: "fly", cue: "Lascia aprire le braccia fino a sentire il petto allungarsi."),
+            Option(name: "Croci con manubri su panca", pattern: "fly", cue: "Gomiti leggermente piegati e fissi."),
+        ],
+        "pull_v": [
+            Option(name: "Lat pulldown presa larga", pattern: "pull_v", cue: "Petto alto, porta la barra al petto."),
+            Option(name: "Lat machine presa neutra", pattern: "pull_v", cue: "Gomiti verso i fianchi."),
+            Option(name: "Trazioni assistite", pattern: "pull_v", cue: "Braccia distese in basso a ogni ripetizione."),
+            Option(name: "Lat machine monolaterale", pattern: "pull_v", cue: "Un braccio alla volta, allunga bene in alto."),
+        ],
+        "pull_h": [
+            Option(name: "Rematore monolaterale al cavo", pattern: "pull_h", cue: "Un braccio alla volta, gomito verso l'anca."),
+            Option(name: "Pulley basso", pattern: "pull_h", cue: "Busto fermo, maniglia all'ombelico."),
+            Option(name: "Rematore con manubrio", pattern: "pull_h", cue: "Gomito verso l'anca."),
+            Option(name: "Rematore alla macchina con appoggio al petto", pattern: "pull_h", cue: "Petto sull'appoggio, niente slancio."),
+            Option(name: "Rematore con bilanciere", pattern: "pull_h", cue: "Busto a 45°, schiena neutra."),
+        ],
+        "face_pull": [
+            Option(name: "Face pull al cavo", pattern: "face_pull", cue: "Corda verso la fronte, gomiti alti."),
+            Option(name: "Reverse pec deck", pattern: "rear_fly", cue: "Apri le braccia indietro, petto sul cuscino."),
+            Option(name: "Alzate posteriori al cavo", pattern: "rear_fly", cue: "Busto inclinato, apri le braccia indietro."),
+        ],
+        "rear_fly": [
+            Option(name: "Alzate posteriori al cavo", pattern: "rear_fly", cue: "Busto inclinato, apri le braccia indietro."),
+            Option(name: "Reverse pec deck", pattern: "rear_fly", cue: "Apri le braccia indietro, petto sul cuscino."),
+            Option(name: "Alzate posteriori con manubri", pattern: "rear_fly", cue: "Busto parallelo al pavimento, gomiti morbidi."),
+            Option(name: "Face pull al cavo", pattern: "face_pull", cue: "Corda verso la fronte, gomiti alti."),
+        ],
+        "push_v": [
+            Option(name: "Shoulder press alla macchina", pattern: "push_v", cue: "Schiena appoggiata, scendi sotto il mento."),
+            Option(name: "Lento avanti con manubri", pattern: "push_v", cue: "Glutei contratti, spingi dritto."),
+            Option(name: "Arnold press", pattern: "push_v", cue: "Ruota i palmi mentre sali."),
+        ],
+        "squat": [
+            Option(name: "Leg press", pattern: "squat", cue: "Scendi finché il bacino non si stacca dallo schienale."),
+            Option(name: "Hack squat", pattern: "squat", cue: "Piedi a metà pedana, scendi profondo."),
+            Option(name: "Goblet squat", pattern: "squat", cue: "Manubrio al petto, gomiti tra le ginocchia."),
+            Option(name: "Squat al multipower", pattern: "squat", cue: "Piedi leggermente avanti, scendi sotto il parallelo."),
+        ],
+        "hinge": [
+            Option(name: "Stacco rumeno con manubri", pattern: "hinge", cue: "Anche indietro, manubri vicini alle gambe."),
+            Option(name: "Good morning", pattern: "hinge", cue: "Bilanciere sulle spalle, ginocchia morbide."),
+            Option(name: "Hyperextension 45°", pattern: "hinge", cue: "Muovi le anche, non la schiena."),
+            Option(name: "Pull-through al cavo", pattern: "hinge", cue: "Corda tra le gambe, spingi le anche in avanti."),
+        ],
+        "lunge": [
+            Option(name: "Affondi in camminata", pattern: "lunge", cue: "Passo lungo, ginocchio dietro vicino a terra."),
+            Option(name: "Step-up su panca", pattern: "lunge", cue: "Spingi con la gamba sopra, non con quella a terra."),
+            Option(name: "Split squat al multipower", pattern: "lunge", cue: "Busto dritto, scendi in verticale."),
+        ],
+        "leg_curl": [
+            Option(name: "Leg curl da seduto", pattern: "leg_curl", cue: "Busto in avanti."),
+            Option(name: "Leg curl sdraiato", pattern: "leg_curl", cue: "Bacino premuto sulla panca."),
+            Option(name: "Nordic curl assistito", pattern: "leg_curl", cue: "Scendi lento, aiutati con le mani."),
+        ],
+        "leg_ext": [
+            Option(name: "Leg extension", pattern: "leg_ext", cue: "Sali fino quasi a distendere."),
+            Option(name: "Leg extension monolaterale", pattern: "leg_ext", cue: "Una gamba alla volta, pausa in alto."),
+            Option(name: "Sissy squat assistito", pattern: "squat", cue: "Ginocchia avanti, tieniti a un appoggio."),
+        ],
+        "calf": [
+            Option(name: "Calf raise in piedi", pattern: "calf", cue: "Pausa con il tallone in basso."),
+            Option(name: "Calf alla leg press", pattern: "calf", cue: "Solo le punte sulla pedana."),
+            Option(name: "Calf seduto", pattern: "calf", cue: "Ritmo lento, niente rimbalzi."),
+        ],
+        "hip_thrust": [
+            Option(name: "Hip thrust", pattern: "hip_thrust", cue: "Mento in basso, spingi con i talloni."),
+            Option(name: "Hip thrust alla macchina", pattern: "hip_thrust", cue: "1 s di stretta in alto."),
+            Option(name: "Glute bridge con bilanciere", pattern: "hip_thrust", cue: "Schiena a terra, spingi il bacino in alto."),
+        ],
+        "core": [
+            Option(name: "Crunch al cavo", pattern: "core", cue: "Arrotola la colonna."),
+            Option(name: "Plank", pattern: "core", cue: "Glutei contratti, 30–60 s."),
+            Option(name: "Ab wheel", pattern: "core", cue: "Bacino in retroversione, non inarcare."),
+            Option(name: "Knee raise alla sbarra", pattern: "core", cue: "Porta le ginocchia al petto senza dondolare."),
+        ],
+        "curl": [
+            Option(name: "Curl con manubri", pattern: "curl", cue: "Gomiti fermi ai fianchi."),
+            Option(name: "Curl al cavo", pattern: "curl", cue: "Tensione costante, scendi completamente."),
+            Option(name: "Curl a martello", pattern: "curl", cue: "Palmi uno verso l'altro."),
+            Option(name: "Curl su panca inclinata", pattern: "curl", cue: "Braccia dietro il busto."),
+        ],
+        "tri_oh": [
+            Option(name: "Estensioni tricipiti sopra la testa al cavo", pattern: "tri_oh", cue: "Gomiti vicini alla testa."),
+            Option(name: "French press con manubrio", pattern: "tri_oh", cue: "Manubrio dietro la testa, gomiti fermi."),
+        ],
+        "tri_push": [
+            Option(name: "Push-down al cavo", pattern: "tri_push", cue: "Gomiti fermi ai fianchi."),
+            Option(name: "Push-down con corda", pattern: "tri_push", cue: "Apri la corda in basso."),
+            Option(name: "Dip alla macchina", pattern: "tri_push", cue: "Busto dritto, gomiti indietro."),
+        ],
+        "raise_l": [
+            Option(name: "Alzate laterali con manubri", pattern: "raise_l", cue: "Fino all'altezza delle spalle."),
+            Option(name: "Alzate laterali al cavo", pattern: "raise_l", cue: "Cavo dietro al corpo, sali lento."),
+            Option(name: "Alzate laterali alla macchina", pattern: "raise_l", cue: "Gomiti guidano il movimento."),
+        ],
+    ]
+
+    static func alternatives(for exercise: Exercise) -> [Option] {
+        let fromPlan = exercise.busy.map { Option(name: $0, pattern: PlanParser.pattern(for: $0), cue: "Alternativa indicata nella tua scheda.") }
+        let generic = (options[exercise.pattern] ?? []).filter { o in o.name != exercise.name && !fromPlan.contains { $0.name.lowercased() == o.name.lowercased() } }
+        return fromPlan + generic
+    }
+
+    private static func key(_ original: String, day: String) -> String { "swap.\(day).\(original)" }
+
+    /// The exercise done instead of `original` on `day`, if any.
+    static func swap(for original: String, day: String = DayId.today) -> Option? {
+        guard let name = UserDefaults.standard.string(forKey: key(original, day: day)) else { return nil }
+        return options.values.joined().first { $0.name == name }
+            ?? Option(name: name, pattern: PlanParser.pattern(for: name), cue: "Alternativa indicata nella tua scheda.")
+    }
+
+    static func set(_ option: Option?, for original: String, day: String = DayId.today) {
+        if let option { UserDefaults.standard.set(option.name, forKey: key(original, day: day)) }
+        else { UserDefaults.standard.removeObject(forKey: key(original, day: day)) }
+    }
+
+    /// The exercise to show today: the original, or its replacement with the same sets and reps.
+    static func resolved(_ exercise: Exercise, day: String = DayId.today) -> Exercise {
+        guard let option = swap(for: exercise.name, day: day) else { return exercise }
+        var e = exercise
+        e.name = option.name
+        e.pattern = option.pattern
+        e.cue = option.cue
+        return e
+    }
+
+    /// Plan exercise or known alternative whose name best matches free text ("panca", "lat"): used by the coach chat.
+    static func match(_ text: String) -> String? {
+        let all = WorkoutPlan.days.flatMap { $0.blocks.flatMap { $0.exercises.flatMap { [$0.name] + $0.busy } } } + options.values.joined().map(\.name)
+        let words = FoodDatabase.normalize(text).split(whereSeparator: { !$0.isLetter }).map(String.init).filter { $0.count > 2 }
+        guard !words.isEmpty else { return nil }
+        var best: (String, Int)?
+        for name in Set(all) {
+            let n = FoodDatabase.normalize(name)
+            let hits = words.filter { n.contains($0) }.count
+            if hits > 0, hits > (best?.1 ?? 0) || hits == best?.1 && name.count < (best?.0.count ?? .max) { best = (name, hits) }
+        }
+        return best?.0
+    }
+}

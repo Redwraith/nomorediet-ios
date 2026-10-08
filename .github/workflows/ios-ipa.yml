@@ -1,0 +1,235 @@
+name: iOS app (.ipa)
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - "scripts/**"
+      - ".github/workflows/ios-ipa.yml"
+  workflow_dispatch:
+  # weekly: rebuild the food database and the app (schedules run from the default branch)
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  # On-device dish recogniser: Google's AIY food classifier V1 (2,023 dishes, Apache-2.0), converted to Core ML once
+  # and kept as an asset of the "food-model" release.
+  food-model:
+    runs-on: macos-15
+    timeout-minutes: 20
+    # optional: without it the app simply has no on-device recogniser
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view food-model --json assets -q '.assets[].name' 2>/dev/null | grep -q FoodClassifier.mlpackage.zip; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.check.outputs.skip != 'true'
+        with: { python-version: '3.11' }
+      - name: Download and convert
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p m/lite m/tf1
+          curl -fsSL -o m/lite.tar.gz "https://www.kaggle.com/api/v1/models/google/aiy/tfLite/vision-classifier-food-v1/1/download"
+          curl -fsSL -o m/tf1.tar.gz "https://www.kaggle.com/api/v1/models/google/aiy/tensorFlow1/vision-classifier-food-v1/1/download"
+          tar xzf m/lite.tar.gz -C m/lite && tar xzf m/tf1.tar.gz -C m/tf1
+          curl -fsSL -o pizza.jpg "https://upload.wikimedia.org/wikipedia/commons/a/a3/Eq_it-na_pizza-margherita_sep2005_sml.jpg" || true
+          pip install -q "tensorflow==2.15.*" "tensorflow-hub==0.16.*" "coremltools==8.*" numpy pillow
+          python scripts/convert_food_model.py m/tf1 m/lite out pizza.jpg
+          (cd out && zip -qry FoodClassifier.mlpackage.zip FoodClassifier.mlpackage) && ls -la out
+          gh release view food-model >/dev/null 2>&1 || \
+            gh release create food-model --prerelease --target "$GITHUB_SHA" --title "Nomorediet dish recogniser" \
+              --notes "Google AIY food classifier V1 (Apache-2.0) converted to Core ML."
+          gh release upload food-model out/FoodClassifier.mlpackage.zip --clobber
+
+  food-db:
+    # Large food database (Open Food Facts Italy + USDA), rebuilt when it is 7 days old or on the weekly run.
+    # rebuilt by the weekly schedule or by hand; a push uses the published one (no runner needed)
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check database age
+        id: age
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          updated=$(gh release view food-db --json assets -q '.assets[] | select(.name=="foods.sqlite.gz") | .updatedAt' 2>/dev/null || true)
+          age=999
+          if [ -n "$updated" ]; then age=$(( ($(date +%s) - $(date -d "$updated" +%s)) / 86400 )); fi
+          echo "Database age: $age days"
+          if [ "$age" -ge 7 ] || [ "${{ github.event_name }}" != "push" ]; then echo "rebuild=true" >> "$GITHUB_OUTPUT"; else echo "rebuild=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Build food database
+        if: steps.age.outputs.rebuild == 'true'
+        run: |
+          python3 scripts/build_food_db.py foods.sqlite
+          gzip -9 -c foods.sqlite > foods.sqlite.gz
+          ls -la foods.sqlite foods.sqlite.gz
+
+      - name: Publish to the "food-db" release
+        if: steps.age.outputs.rebuild == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view food-db >/dev/null 2>&1 || \
+            gh release create food-db --prerelease --target "$GITHUB_SHA" --title "Nomorediet food database" \
+              --notes "Open Food Facts (prodotti venduti in Italia, ODbL) + USDA FoodData Central (pubblico dominio). Ricostruito ogni settimana."
+          gh release upload food-db foods.sqlite.gz --clobber
+
+  build:
+    needs: [food-db, food-model]
+    # the database and the dish model are optional refreshes: the build downloads the last published ones,
+    # so it runs even when a helper job fails or never gets a runner
+    if: always()
+    env:
+      # optional: a token with write access to the public <owner>/nomorediet-updates repository
+      UPDATES_TOKEN: ${{ secrets.UPDATES_TOKEN }}
+    # Xcode 27 (iOS 27 SDK) for the on-device Foundation Models image input
+    runs-on: xcode-27
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download food database
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p Piatto/Data
+          if gh release download food-db -p foods.sqlite.gz -D Piatto/Data --clobber; then
+            gunzip -f Piatto/Data/foods.sqlite.gz
+            ls -la Piatto/Data
+          else
+            echo "No food database yet: the app falls back to its built-in table"
+          fi
+          if gh release download food-model -p FoodClassifier.mlpackage.zip -D Piatto/Data --clobber; then
+            (cd Piatto/Data && unzip -qo FoodClassifier.mlpackage.zip && rm FoodClassifier.mlpackage.zip)
+          else
+            echo "No dish recogniser: the app works without it"
+          fi
+          ls -la Piatto/Data
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (unsigned, signed later by Sideloadly / AltStore)
+        run: |
+          xcodebuild \
+            -project Piatto.xcodeproj \
+            -scheme Piatto \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Unit tests (simulator)
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in sorted(d.items(), reverse=True) if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          echo "Simulator: $DEVICE"
+          xcodebuild test \
+            -project Piatto.xcodeproj \
+            -scheme Piatto \
+            -destination "id=$DEVICE" \
+            -derivedDataPath build-tests \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 60
+          exit ${PIPESTATUS[0]}
+
+      - name: Package .ipa and Xcode project
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/Nomorediet.app out/Payload/
+          # Ad-hoc signature only to embed the HealthKit entitlement; Sideloadly/AltStore re-sign with the user's Apple ID.
+          codesign --force --sign - --generate-entitlement-der --entitlements Widgets/Widgets.entitlements out/Payload/Nomorediet.app/PlugIns/NomoredietWidgets.appex
+          codesign --force --sign - --generate-entitlement-der --entitlements Piatto/Piatto.entitlements out/Payload/Nomorediet.app
+          codesign -d --entitlements - out/Payload/Nomorediet.app/PlugIns/NomoredietWidgets.appex
+          codesign -d --entitlements - out/Payload/Nomorediet.app
+          (cd out && zip -qry Nomorediet.ipa Payload)
+          zip -qry out/Nomorediet-Xcode.zip Piatto.xcodeproj Piatto Shared Widgets project.yml
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nomorediet-ipa
+          path: |
+            ios/out/Nomorediet.ipa
+            ios/out/Nomorediet-Xcode.zip
+
+      - name: Publish to the "piatto-ios" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view piatto-ios >/dev/null 2>&1 || \
+            gh release create piatto-ios --prerelease --target "$GITHUB_SHA" \
+              --title "Nomorediet per iPhone" \
+              --notes "App Nomorediet non firmata: installala con Sideloadly o AltStore usando il tuo Apple ID. Istruzioni in ios/README.md."
+          gh release edit piatto-ios --title "Nomorediet per iPhone"
+          for old in Piatto.ipa Piatto-Xcode.zip; do gh release delete-asset piatto-ios "$old" -y 2>/dev/null || true; done
+          gh release upload piatto-ios out/Nomorediet.ipa out/Nomorediet-Xcode.zip --clobber
+
+      - name: Keep a copy of the .ipa on the ipa-download branch
+        # a convenience copy: a network hiccup here must not stop the SideStore update below
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dl && cp out/Nomorediet.ipa dl/ && cd dl
+          git init -q -b ipa-download
+          git add Nomorediet.ipa
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -qm "Nomorediet.ipa ${GITHUB_SHA::7}"
+          git config http.postBuffer 157286400
+          for attempt in 1 2 3; do
+            git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ipa-download && exit 0
+            echo "push failed (attempt $attempt), retrying"; sleep $((attempt * 10))
+          done
+          exit 1
+
+      - name: Publish the over-the-air update (SideStore source)
+        if: env.UPDATES_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.UPDATES_TOKEN }}
+        run: |
+          set -e
+          REPO="${{ github.repository_owner }}/nomorediet-updates"
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" out/Payload/Nomorediet.app/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" out/Payload/Nomorediet.app/Info.plist)
+          TAG="v$VERSION-$BUILD"
+          # release notes: the newest section of the changelog
+          awk '/^## /{n++} n==1 && !/^## /' ../docs/CHANGELOG.md > notes.txt
+          gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 || \
+            gh release create "$TAG" -R "$REPO" --title "Nomorediet $VERSION ($BUILD)" --notes-file notes.txt
+          gh release upload "$TAG" out/Nomorediet.ipa -R "$REPO" --clobber
+          git clone -q "https://x-access-token:${UPDATES_TOKEN}@github.com/$REPO.git" pub
+          cp Piatto/Assets.xcassets/AppIcon.appiconset/icon-1024.png pub/icon.png
+          python3 ../scripts/make_source.py pub/apps.json "$VERSION" "$BUILD" out/Nomorediet.ipa \
+            "https://github.com/$REPO/releases/download/$TAG/Nomorediet.ipa" \
+            "https://raw.githubusercontent.com/$REPO/main/icon.png" notes.txt > apps.json
+          mv apps.json pub/apps.json
+          cd pub
+          git add apps.json icon.png
+          git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -qm "Nomorediet $VERSION ($BUILD)" || true
+          git push -q origin HEAD
+          echo "Fonte SideStore: https://raw.githubusercontent.com/$REPO/main/apps.json"
