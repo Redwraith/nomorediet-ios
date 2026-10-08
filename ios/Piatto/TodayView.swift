@@ -159,6 +159,7 @@ struct TodayView: View {
                     Button { app.sheet = .addFood(slot, .search) } label: { Label("Cerca alimento", systemImage: "magnifyingglass") }
                     Button { app.sheet = .addFood(slot, .describe) } label: { Label("Descrivi a voce o per iscritto", systemImage: "text.bubble") }
                     Button { app.sheet = .addFood(slot, .barcode) } label: { Label("Codice a barre", systemImage: "barcode.viewfinder") }
+                    Button { app.sheet = .addFood(slot, .text) } label: { Label("Leggi il nome dalla confezione", systemImage: "text.viewfinder") }
                     Button { app.sheet = .addFood(slot, .label) } label: { Label("Foto dell'etichetta", systemImage: "doc.text.viewfinder") }
                     Button { app.sheet = .addFood(slot, .photo) } label: { Label("Foto del piatto", systemImage: "camera") }
                     Button { app.sheet = .addFood(slot, .manual) } label: { Label("Inserisci a mano", systemImage: "square.and.pencil") }

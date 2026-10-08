@@ -1,10 +1,10 @@
 import SwiftData
 import SwiftUI
 
-/// Adds foods to a meal: search (built-in list, own foods, Open Food Facts), barcode,
+/// Adds foods to a meal: search (built-in list, own foods, Open Food Facts), product name read from the pack, barcode,
 /// nutrition label photo, plate or pack photo (barcode and printed name are read too) or manual values.
 struct AddFoodView: View {
-    enum Mode: String { case search, barcode, label, photo, manual, describe }
+    enum Mode: String { case search, barcode, text, label, photo, manual, describe }
 
     @State var slot: MealSlot
     @State var mode: Mode
@@ -27,6 +27,8 @@ struct AddFoodView: View {
     @State private var volumeMl: Double?
     @State private var added: [String] = []
     @State private var searchTask: Task<Void, Never>?
+    /// Word blocks tapped in the text reader (brand, product name), in tap order.
+    @State private var scannedWords: [String] = []
     @State private var aiResult: FoodAI.Result?
     @State private var aiItems: [AIRow] = []
     @State private var analyzing = false
@@ -140,6 +142,9 @@ struct AddFoodView: View {
             .sheet(isPresented: Binding(get: { mode == .barcode && picked == nil && message == nil }, set: { if !$0 { mode = .search } })) {
                 barcodeSheet
             }
+            .sheet(isPresented: Binding(get: { mode == .text }, set: { if !$0 { mode = .search } })) {
+                textSheet
+            }
             .onAppear(perform: start)
         }
     }
@@ -218,6 +223,9 @@ struct AddFoodView: View {
         HStack {
             Button { mode = .barcode; message = nil } label: { Label("Codice", systemImage: "barcode.viewfinder") }
             Spacer()
+            Button { scannedWords = []; mode = .text; message = nil } label: { Label("Leggi il nome", systemImage: "text.viewfinder") }
+                .accessibilityIdentifier("scan-text")
+            Spacer()
             Button { cameraPurpose = .label; showCamera = true } label: { Label("Etichetta", systemImage: "doc.text.viewfinder") }
             Spacer()
             Button { cameraPurpose = .photo; showCamera = true } label: { Label("Foto", systemImage: "camera") }
@@ -228,6 +236,50 @@ struct AddFoodView: View {
         }
         .labelStyle(.iconOnly)
         .font(.title3)
+    }
+
+    // MARK: Product name from the pack
+
+    /// Point the camera at the pack, tap the brand and the product name, then search them
+    /// in the built-in list, the database and Open Food Facts (which give the product's real name).
+    private var textSheet: some View {
+        NavigationStack {
+            Group {
+                if TextScanner.isAvailable {
+                    TextScanner { text in
+                        let words = TextReader.productQuery(text)
+                        if !words.isEmpty && !scannedWords.contains(words) { scannedWords.append(words) }
+                    }
+                    .ignoresSafeArea()
+                } else {
+                    ContentUnavailableView("Lettura non disponibile", systemImage: "text.viewfinder",
+                                           description: Text("Consenti la fotocamera in Impostazioni → Nomorediet."))
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 10) {
+                    Text(scannedWords.isEmpty ? "Tocca la marca e il nome del prodotto sulla confezione" : scannedWords.joined(separator: " "))
+                        .font(scannedWords.isEmpty ? .footnote : .headline)
+                        .foregroundStyle(scannedWords.isEmpty ? .secondary : .primary)
+                        .multilineTextAlignment(.center)
+                    HStack {
+                        Button("Cancella") { scannedWords = [] }.buttonStyle(.bordered).disabled(scannedWords.isEmpty)
+                        Button {
+                            query = scannedWords.joined(separator: " ")
+                            scannedWords = []
+                            mode = .search
+                        } label: { Label("Cerca", systemImage: "magnifyingglass").frame(maxWidth: .infinity) }
+                            .buttonStyle(.borderedProminent).disabled(scannedWords.isEmpty)
+                            .accessibilityIdentifier("scan-text-search")
+                    }
+                }
+                .padding()
+                .background(.bar)
+            }
+            .navigationTitle("Leggi il nome del prodotto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { mode = .search } } }
+        }
     }
 
     // MARK: Barcode

@@ -221,7 +221,8 @@ final class FoodStoreTests: XCTestCase {
 }
 
 final class FoodUpdatesTests: XCTestCase {
-    func testUpdatedProductsReplaceBundledOnes() {
+    func testUpdatedProductsReplaceBundledOnes() throws {
+        try XCTSkipUnless(FoodStore.shared.isAvailable, "large database not bundled in this build")
         let code = "999000\(Int.random(in: 100000...999999))"
         let food = Food(name: "Yogurt test aggiornato", per100: Nutrients(kcal: 61, protein: 10, carbs: 4, fat: 0.2),
                         portion: 150, portionName: "1 vasetto", barcode: code, brand: "Prova", source: .openFoodFacts)
@@ -566,5 +567,14 @@ final class ShortcutIntentTests: XCTestCase {
         let next = URLComponents(string: error)!.queryItems!
         XCTAssertEqual(next.first { $0.name == "name" }?.value, "Invia dati Salute a Nomorediet")
         XCTAssertEqual(next.first { $0.name == "x-error" }?.value, "nomorediet://diario")
+    }
+}
+
+final class ProductTextTests: XCTestCase {
+    func testPackTextBecomesASearch() {
+        XCTAssertEqual(TextReader.productQuery("YOGURT GRECO 0%  500 g"), "Yogurt Greco 0%")
+        XCTAssertEqual(TextReader.productQuery("Pan di Stelle"), "Pan di Stelle")
+        XCTAssertEqual(TextReader.productQuery("  Mulino  Bianco\n1,5 kg "), "Mulino Bianco")
+        XCTAssertEqual(TextReader.productQuery("350g"), "")
     }
 }

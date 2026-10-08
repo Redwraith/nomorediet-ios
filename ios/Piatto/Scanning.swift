@@ -99,6 +99,16 @@ enum TextReader {
         }
     }
 
+    /// Words read from a pack, ready to search: no weights ("500 g", "1,5 L"), single spaces,
+    /// and ALL CAPS print turned into normal case ("YOGURT GRECO" -> "Yogurt Greco").
+    static func productQuery(_ text: String) -> String {
+        let noWeights = text.replacingOccurrences(of: #"\b\d+([.,]\d+)?\s?(g|gr|kg|ml|cl|l)\b"#, with: " ",
+                                                  options: [.regularExpression, .caseInsensitive])
+        let words = noWeights.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let letters = words.filter(\.isLetter)
+        return !letters.isEmpty && letters == letters.uppercased() ? words.capitalized : words
+    }
+
     /// Values per 100 g from a nutrition label. Only fields it is confident about are filled.
     static func label(_ lines: [String]) -> Nutrients {
         var n = Nutrients()
@@ -214,6 +224,37 @@ struct BarcodeScanner: UIViewControllerRepresentable {
                     return
                 }
             }
+        }
+    }
+}
+
+/// Live text reader (VisionKit, on the iPhone): every tap on a word block printed on the pack
+/// (brand, product name) is passed to `tapped`.
+struct TextScanner: UIViewControllerRepresentable {
+    var tapped: (String) -> Void
+
+    static var isAvailable: Bool { BarcodeScanner.isAvailable }
+
+    func makeUIViewController(context: Context) -> DataScannerViewController {
+        let scanner = DataScannerViewController(recognizedDataTypes: [.text(languages: ["it-IT", "en-US"])],
+                                                qualityLevel: .balanced, recognizesMultipleItems: true, isHighlightingEnabled: true)
+        scanner.delegate = context.coordinator
+        try? scanner.startScanning()
+        return scanner
+    }
+
+    func updateUIViewController(_ controller: DataScannerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(tapped: tapped) }
+
+    final class Coordinator: NSObject, DataScannerViewControllerDelegate {
+        let tapped: (String) -> Void
+        init(tapped: @escaping (String) -> Void) { self.tapped = tapped }
+
+        func dataScanner(_ scanner: DataScannerViewController, didTapOn item: RecognizedItem) {
+            guard case .text(let text) = item else { return }
+            UISelectionFeedbackGenerator().selectionChanged()
+            tapped(text.transcript)
         }
     }
 }

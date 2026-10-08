@@ -1,5 +1,8 @@
 # Nomorediet — Novità
 
+## 4.9.7
+- Leggi il nome dalla confezione: inquadra il prodotto, tocca la marca e il nome stampati sulla confezione e premi Cerca. Il testo viene letto sull'iPhone (senza internet), pulito da pesi e maiuscole, e cercato tra gli alimenti, nel database e su Open Food Facts, che danno il nome giusto del prodotto con i suoi valori. Lo trovi nella barra in basso della ricerca (icona testo) e nel menu + di ogni pasto.
+
 ## 4.9.6
 - Comando rapido più semplice: nei campi di "Invia dati Salute a Nomorediet" puoi mettere direttamente il risultato di "Trova campioni di Salute", senza "Calcola statistiche". L'app somma passi, calorie, km e minuti, fa la media di battito e HRV e converte il sonno in ore.
 - Se l'azione parte con i campi vuoti, ora te lo dice invece di rispondere "Ricevuto".
