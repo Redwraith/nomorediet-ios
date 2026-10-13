@@ -657,3 +657,33 @@ final class HealthExportTests: XCTestCase {
     }
 }
 
+final class ZipReaderTests: XCTestCase {
+    /// A one-entry ZIP written by hand, with the entry compressed as raw deflate (what ZIP uses).
+    private func zip(name: String, content: Data) throws -> Data {
+        let deflated = try (content as NSData).compressed(using: .zlib) as Data
+        func le16(_ v: Int) -> Data { withUnsafeBytes(of: UInt16(v).littleEndian) { Data($0) } }
+        func le32(_ v: Int) -> Data { withUnsafeBytes(of: UInt32(v).littleEndian) { Data($0) } }
+        let nameData = Data(name.utf8)
+        var out = Data()
+        out += le32(0x04034b50) + le16(20) + le16(0) + le16(8) + le16(0) + le16(0) + le32(0)
+        out += le32(deflated.count) + le32(content.count) + le16(nameData.count) + le16(0) + nameData + deflated
+        let cd = out.count
+        out += le32(0x02014b50) + le16(20) + le16(20) + le16(0) + le16(8) + le16(0) + le16(0) + le32(0)
+        out += le32(deflated.count) + le32(content.count) + le16(nameData.count) + le16(0) + le16(0) + le16(0) + le16(0)
+        out += le32(0) + le32(0) + nameData
+        let cdSize = out.count - cd
+        out += le32(0x06054b50) + le16(0) + le16(0) + le16(1) + le16(1) + le32(cdSize) + le32(cd) + le16(0)
+        return out
+    }
+
+    func testExportXmlComesOutOfTheZip() throws {
+        let xml = String(repeating: "<Record type=\"HKQuantityTypeIdentifierStepCount\" sourceName=\"iPhone\" unit=\"count\" startDate=\"2026-10-05 08:00:00 +0200\" endDate=\"2026-10-05 08:10:00 +0200\" value=\"100\"/>\n", count: 3000)
+        let full = "<?xml version=\"1.0\"?>\n<HealthData>\n" + xml + "</HealthData>\n"
+        let dir = FileManager.default.temporaryDirectory
+        let zipURL = dir.appendingPathComponent("export-test.zip")
+        try zip(name: "apple_health_export/export.xml", content: Data(full.utf8)).write(to: zipURL)
+        let summary = HealthExportReader.read(file: zipURL, since: "2026-01-01")
+        XCTAssertEqual(summary?.days["2026-10-05"]?["steps"], 300_000)
+    }
+}
+

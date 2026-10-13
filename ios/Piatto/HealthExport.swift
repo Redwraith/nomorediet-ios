@@ -1,4 +1,5 @@
 import Foundation
+import Compression
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -183,16 +184,15 @@ struct HealthExportImportView: View {
             Section("Come fare") {
                 Label("Apri Salute e tocca la tua foto in alto a destra", systemImage: "1.circle")
                 Label("Scorri in fondo: \"Esporta tutti i dati sanitari\" → Esporta (ci vuole qualche minuto)", systemImage: "2.circle")
-                Label("Salva il file in File (es. In questo iPhone)", systemImage: "3.circle")
-                Label("Nell'app File tocca export.zip: diventa una cartella apple_health_export", systemImage: "4.circle")
-                Label("Qui sotto scegli export.xml dentro quella cartella", systemImage: "5.circle")
+                Label("Nel foglio di condivisione che si apre tocca Nomorediet: l'importazione parte da sola", systemImage: "3.circle")
+                Label("Oppure salvalo in File e qui sotto scegli export.zip (o export.xml)", systemImage: "4.circle")
             }
             .font(.subheadline)
             Section {
                 if working {
                     HStack { ProgressView(); Text("Leggo i dati di Salute…").foregroundStyle(.secondary) }
                 } else {
-                    Button { picking = true } label: { Label("Scegli export.xml", systemImage: "square.and.arrow.down") }
+                    Button { picking = true } label: { Label("Scegli export.zip o export.xml", systemImage: "square.and.arrow.down") }
                         .accessibilityIdentifier("health-export-pick")
                 }
                 if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
@@ -208,24 +208,156 @@ struct HealthExportImportView: View {
     }
 
     private func importFile(_ url: URL) {
-        if url.pathExtension.lowercased() == "zip" {
-            message = "Questo è lo zip: aprilo prima nell'app File (si estrae con un tocco) e scegli export.xml dentro la cartella."
-            return
-        }
         working = true
         message = nil
         let since = DayId.shift(DayId.today, by: -ShortcutHealth.keptDays)
         Task {
             let access = url.startAccessingSecurityScopedResource()
-            let summary = await Task.detached(priority: .userInitiated) { HealthExportReader.read(url, since: since) }.value
+            let summary = await Task.detached(priority: .userInitiated) { HealthExportReader.read(file: url, since: since) }.value
             if access { url.stopAccessingSecurityScopedResource() }
             working = false
             guard let summary, summary.records > 0 else {
-                message = "Non trovo dati di Salute in questo file: scegli export.xml (non export_cda.xml)."
+                message = "Non trovo dati di Salute in questo file: scegli export.zip o export.xml (non export_cda.xml)."
                 return
             }
             message = ShortcutHealth.importExport(summary, context: context)
             DebugLog.shared.add("info", "health", message ?? "")
         }
+    }
+}
+
+/// Just enough of the ZIP format to take export.xml out of Health's export.zip, in a stream (the file can be
+/// gigabytes): central directory (ZIP64 too), then the entry inflated chunk by chunk to a file.
+enum ZipReader {
+    enum Failure: Error { case notZip, missing(String), unsupported }
+
+    private struct Entry { var name: String; var method: UInt16; var compressed: UInt64; var size: UInt64; var offset: UInt64 }
+
+    /// Extracts the first entry whose name ends with `suffix` to `destination`.
+    static func extract(_ zip: URL, entryEndingWith suffix: String, to destination: URL) throws {
+        let file = try FileHandle(forReadingFrom: zip)
+        defer { try? file.close() }
+        guard let entry = try entries(file).first(where: { $0.name.hasSuffix(suffix) && !$0.name.contains("__MACOSX") }) else {
+            throw Failure.missing(suffix)
+        }
+        try file.seek(toOffset: entry.offset)
+        let local = try read(file, 30)
+        guard u32(local, 0) == 0x04034b50 else { throw Failure.notZip }
+        try file.seek(toOffset: entry.offset + 30 + UInt64(u16(local, 26)) + UInt64(u16(local, 28)))
+        FileManager.default.createFile(atPath: destination.path, contents: nil)
+        let out = try FileHandle(forWritingTo: destination)
+        defer { try? out.close() }
+        switch entry.method {
+        case 0: try copy(file, to: out, count: entry.compressed)
+        case 8: try inflate(file, to: out, count: entry.compressed)
+        default: throw Failure.unsupported
+        }
+    }
+
+    private static func entries(_ file: FileHandle) throws -> [Entry] {
+        let end = try file.seekToEnd()
+        let tailLength = min(end, 65_557)
+        try file.seek(toOffset: end - tailLength)
+        let tail = try read(file, Int(tailLength))
+        guard let eocd = stride(from: tail.count - 22, through: 0, by: -1).first(where: { u32(tail, $0) == 0x06054b50 }) else {
+            throw Failure.notZip
+        }
+        var count = UInt64(u16(tail, eocd + 10))
+        var cdOffset = UInt64(u32(tail, eocd + 16))
+        // ZIP64: the locator just before the end record points to the ZIP64 end record
+        if eocd >= 20, u32(tail, eocd - 20) == 0x07064b50 {
+            try file.seek(toOffset: u64(tail, eocd - 20 + 8))
+            let z = try read(file, 56)
+            if u32(z, 0) == 0x06064b50 { count = u64(z, 32); cdOffset = u64(z, 48) }
+        }
+        try file.seek(toOffset: cdOffset)
+        var list: [Entry] = []
+        for _ in 0..<count {
+            let h = try read(file, 46)
+            guard u32(h, 0) == 0x02014b50 else { break }
+            let nameLength = Int(u16(h, 28)), extraLength = Int(u16(h, 30)), commentLength = Int(u16(h, 32))
+            let name = String(decoding: try read(file, nameLength), as: UTF8.self)
+            let extra = try read(file, extraLength)
+            _ = try read(file, commentLength)
+            var e = Entry(name: name, method: u16(h, 10), compressed: UInt64(u32(h, 20)), size: UInt64(u32(h, 24)),
+                          offset: UInt64(u32(h, 42)))
+            // ZIP64 extra field: only the values that are 0xFFFFFFFF above, in this order
+            var i = 0
+            while i + 4 <= extra.count {
+                let id = u16(extra, i), length = Int(u16(extra, i + 2))
+                if id == 0x0001 {
+                    var p = i + 4
+                    if e.size == 0xFFFF_FFFF, p + 8 <= extra.count { e.size = u64(extra, p); p += 8 }
+                    if e.compressed == 0xFFFF_FFFF, p + 8 <= extra.count { e.compressed = u64(extra, p); p += 8 }
+                    if e.offset == 0xFFFF_FFFF, p + 8 <= extra.count { e.offset = u64(extra, p) }
+                }
+                i += 4 + length
+            }
+            list.append(e)
+        }
+        return list
+    }
+
+    private static func copy(_ input: FileHandle, to out: FileHandle, count: UInt64) throws {
+        var left = count
+        while left > 0 {
+            let chunk = try read(input, Int(min(left, 1 << 20)))
+            guard !chunk.isEmpty else { break }
+            out.write(chunk)
+            left -= UInt64(chunk.count)
+        }
+    }
+
+    /// Raw deflate (what ZIP uses) through the Compression framework's streaming API.
+    private static func inflate(_ input: FileHandle, to out: FileHandle, count: UInt64) throws {
+        let stream = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
+        defer { stream.deallocate() }
+        guard compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
+            throw Failure.unsupported
+        }
+        defer { compression_stream_destroy(stream) }
+        let outSize = 1 << 20
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: outSize)
+        defer { buffer.deallocate() }
+        var left = count
+        var status = COMPRESSION_STATUS_OK
+        while status == COMPRESSION_STATUS_OK {
+            let chunk = left > 0 ? try read(input, Int(min(left, 1 << 20))) : Data()
+            left -= UInt64(chunk.count)
+            let last = left == 0
+            try chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                stream.pointee.src_ptr = raw.bindMemory(to: UInt8.self).baseAddress ?? UnsafePointer(buffer)
+                stream.pointee.src_size = chunk.count
+                repeat {
+                    stream.pointee.dst_ptr = buffer
+                    stream.pointee.dst_size = outSize
+                    status = compression_stream_process(stream, last ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
+                    guard status != COMPRESSION_STATUS_ERROR else { throw Failure.unsupported }
+                    let produced = outSize - stream.pointee.dst_size
+                    if produced > 0 { out.write(Data(bytes: buffer, count: produced)) }
+                } while status == COMPRESSION_STATUS_OK && (stream.pointee.src_size > 0 || stream.pointee.dst_size == 0)
+            }
+            if last && status == COMPRESSION_STATUS_OK && chunk.isEmpty { break }
+        }
+    }
+
+    private static func read(_ file: FileHandle, _ count: Int) throws -> Data {
+        count == 0 ? Data() : (try file.read(upToCount: count) ?? Data())
+    }
+    private static func u16(_ d: Data, _ i: Int) -> UInt16 { UInt16(d[d.startIndex + i]) | UInt16(d[d.startIndex + i + 1]) << 8 }
+    private static func u32(_ d: Data, _ i: Int) -> UInt32 { UInt32(u16(d, i)) | UInt32(u16(d, i + 2)) << 16 }
+    private static func u64(_ d: Data, _ i: Int) -> UInt64 { UInt64(u32(d, i)) | UInt64(u32(d, i + 4)) << 32 }
+}
+
+extension HealthExportReader {
+    /// export.xml, or Health's export.zip as it comes out of the share sheet (export.xml is taken out first).
+    static func read(file url: URL, since: String) -> Summary? {
+        guard url.pathExtension.lowercased() == "zip" else { return read(url, since: since) }
+        let xml = FileManager.default.temporaryDirectory.appendingPathComponent("health-export.xml")
+        defer { try? FileManager.default.removeItem(at: xml) }
+        do { try ZipReader.extract(url, entryEndingWith: "/export.xml", to: xml) } catch {
+            do { try ZipReader.extract(url, entryEndingWith: "export.xml", to: xml) } catch { return nil }
+        }
+        return read(xml, since: since)
     }
 }

@@ -29,6 +29,13 @@ targets:
         CFBundleDisplayName: Nomorediet
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Health's "Esporta tutti i dati sanitari" (export.zip) and export.xml open in Nomorediet from the share sheet
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Esportazione Apple Salute
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.zip-archive, public.xml]
+        LSSupportsOpeningDocumentsInPlace: false
         LSRequiresIPhoneOS: true
         UILaunchScreen:
           UIColorName: Background

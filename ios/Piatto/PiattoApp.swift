@@ -30,6 +30,8 @@ struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var updates = UpdateChecker.shared
+    @State private var importingHealth = false
+    @State private var healthMessage: String?
 
     var body: some View {
         Group {
@@ -55,6 +57,20 @@ struct RootView: View {
             case .debug: DebugView(close: { app.sheet = nil })
             }
         }
+        .overlay {
+            if importingHealth {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Importo i dati di Salute…").font(.headline)
+                    Text("Può volerci qualche minuto se lo storico è lungo.").font(.footnote).foregroundStyle(.secondary)
+                }
+                .padding(24)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+            }
+        }
+        .alert("Apple Salute", isPresented: Binding(get: { healthMessage != nil }, set: { if !$0 { healthMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(healthMessage ?? "") }
         .onAppear(perform: handlePending)
         .onReceive(NotificationCenter.default.publisher(for: .piattoPendingAction)) { _ in handlePending() }
         .onReceive(NotificationCenter.default.publisher(for: .piattoShowDebug)) { _ in app.sheet = .debug }
@@ -91,6 +107,23 @@ struct RootView: View {
         case "workout":
             app.tab = .allenamento
             app.openWorkout = true
+        case "healthExport":
+            guard let path = action["path"] as? String else { return }
+            app.tab = .profilo
+            importingHealth = true
+            let since = DayId.shift(DayId.today, by: -ShortcutHealth.keptDays)
+            Task {
+                let url = URL(fileURLWithPath: path)
+                let summary = await Task.detached(priority: .userInitiated) { HealthExportReader.read(file: url, since: since) }.value
+                try? FileManager.default.removeItem(at: url)
+                importingHealth = false
+                if let summary, summary.records > 0 {
+                    healthMessage = ShortcutHealth.importExport(summary, context: context)
+                } else {
+                    healthMessage = "Non trovo dati di Salute in questo file: usa export.zip o export.xml di \"Esporta tutti i dati sanitari\"."
+                }
+                DebugLog.shared.add("info", "health", healthMessage ?? "")
+            }
         case "repeat":
             if let key = action["key"] as? String { Sync.repeatMeal(key: key, context: context) }
             app.tab = .oggi
@@ -157,6 +190,16 @@ struct UpdateBanner: View {
 /// nomorediet:// links from the widget: photo, scale, workout, repeat?key=…, debug
 enum DeepLink {
     static func handle(_ url: URL) {
+        // export.zip / export.xml opened from Health's share sheet or from Files
+        if url.isFileURL {
+            let access = url.startAccessingSecurityScopedResource()
+            defer { if access { url.stopAccessingSecurityScopedResource() } }
+            let copy = FileManager.default.temporaryDirectory.appendingPathComponent("salute-" + url.lastPathComponent)
+            try? FileManager.default.removeItem(at: copy)
+            guard (try? FileManager.default.copyItem(at: url, to: copy)) != nil else { return }
+            PendingAction.set(["action": "healthExport", "path": copy.path])
+            return
+        }
         guard url.scheme == "nomorediet" else { return }
         let key = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "key" }?.value
         switch url.host {
