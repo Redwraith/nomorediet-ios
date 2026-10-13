@@ -176,13 +176,15 @@ enum FoodAI {
     }
 }
 
-/// API keys, kept in the iPhone's Keychain (one per provider).
+/// API keys, kept in the Keychain (one per provider). Saved in iCloud Keychain when available, so a reinstall
+/// or a new iPhone finds them again; on the iPhone only otherwise.
 enum Keychain {
     static let anthropic = "app.piatto.ios.anthropic"
     static let gemini = "app.piatto.ios.gemini"
 
     static func read(_ service: String = anthropic) -> String? {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                                    kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
                                     kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
         var out: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess, let data = out as? Data,
@@ -194,6 +196,11 @@ enum Keychain {
         delete(service)
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        let synced: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                                     kSecAttrSynchronizable as String: true,
+                                     kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+                                     kSecValueData as String: Data(trimmed.utf8)]
+        if SecItemAdd(synced as CFDictionary, nil) == errSecSuccess { return }
         let item: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                                    kSecValueData as String: Data(trimmed.utf8)]
@@ -201,7 +208,8 @@ enum Keychain {
     }
 
     static func delete(_ service: String = anthropic) {
-        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service] as CFDictionary)
+        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                       kSecAttrSynchronizable as String: kSecAttrSynchronizableAny] as CFDictionary)
     }
 }
 

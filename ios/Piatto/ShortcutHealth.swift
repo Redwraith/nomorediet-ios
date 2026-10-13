@@ -40,7 +40,10 @@ enum ShortcutHealth {
         hasData || HealthCache.shared.status?.contains("entitlement") == true
     }
 
-    /// day → metric → value, last 60 days.
+    /// Days of daily values kept (a full export from Health brings in up to this much).
+    static let keptDays = 400
+
+    /// day → metric → value, last `keptDays` days.
     static var history: [String: [String: Double]] {
         get { UserDefaults.standard.dictionary(forKey: key) as? [String: [String: Double]] ?? [:] }
         set { UserDefaults.standard.set(newValue, forKey: key) }
@@ -55,7 +58,7 @@ enum ShortcutHealth {
         var row = all[day] ?? [:]
         for (metric, value) in values { if let value, value >= 0 { row[metric] = value } }
         all[day] = row
-        let oldest = DayId.shift(DayId.today, by: -60)
+        let oldest = DayId.shift(DayId.today, by: -keptDays)
         all = all.filter { $0.key >= oldest }
         history = all
         UserDefaults.standard.set(Date(), forKey: sentKey)

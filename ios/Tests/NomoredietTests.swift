@@ -625,3 +625,35 @@ final class WorkoutSequenceTests: XCTestCase {
     }
 }
 
+final class HealthExportTests: XCTestCase {
+    func testDailyValuesFromTheExport() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <HealthData locale="it_IT">
+         <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="2026-10-05 08:00:00 +0200" endDate="2026-10-05 08:10:00 +0200" value="4000"/>
+         <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="2026-10-05 18:00:00 +0200" endDate="2026-10-05 18:10:00 +0200" value="2000"/>
+         <Record type="HKQuantityTypeIdentifierStepCount" sourceName="Apple Watch" unit="count" startDate="2026-10-05 08:00:00 +0200" endDate="2026-10-05 08:10:00 +0200" value="5500"/>
+         <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Apple Watch" unit="kJ" startDate="2026-10-05 09:00:00 +0200" endDate="2026-10-05 09:30:00 +0200" value="418.4"/>
+         <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="Bilancia" unit="kg" startDate="2026-10-05 07:00:00 +0200" endDate="2026-10-05 07:00:00 +0200" value="86.3"/>
+         <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="Bilancia" unit="kg" startDate="2024-01-10 07:00:00 +0200" endDate="2024-01-10 07:00:00 +0200" value="90"/>
+         <Record type="HKQuantityTypeIdentifierBodyFatPercentage" sourceName="Bilancia" unit="%" startDate="2026-10-05 07:00:00 +0200" endDate="2026-10-05 07:00:00 +0200" value="0.22"/>
+         <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" unit="count/min" startDate="2026-10-05 10:00:00 +0200" endDate="2026-10-05 10:00:00 +0200" value="60"/>
+         <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Apple Watch" unit="count/min" startDate="2026-10-05 11:00:00 +0200" endDate="2026-10-05 11:00:00 +0200" value="80"/>
+         <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" startDate="2026-10-05 23:30:00 +0200" endDate="2026-10-06 03:30:00 +0200" value="HKCategoryValueSleepAnalysisAsleepCore"/>
+         <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" startDate="2026-10-06 03:30:00 +0200" endDate="2026-10-06 06:30:00 +0200" value="HKCategoryValueSleepAnalysisAsleepDeep"/>
+         <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Apple Watch" startDate="2026-10-05 23:00:00 +0200" endDate="2026-10-06 07:00:00 +0200" value="HKCategoryValueSleepAnalysisInBed"/>
+        </HealthData>
+        """
+        let s = HealthExportReader.read(xml: xml, since: "2026-01-01")
+        let day = s.days["2026-10-05"] ?? [:]
+        XCTAssertEqual(day["steps"], 6000) // iPhone 6000 vs Watch 5500: the larger source, not the sum
+        XCTAssertEqual(day["activeKcal"] ?? 0, 100, accuracy: 0.01)
+        XCTAssertEqual(day["weightKg"], 86.3)
+        XCTAssertEqual(day["bodyFat"] ?? 0, 22, accuracy: 0.01)
+        XCTAssertEqual(day["heartRate"], 70)
+        XCTAssertEqual(s.days["2026-10-06"]?["sleepHours"] ?? 0, 7, accuracy: 0.01)
+        XCTAssertNil(s.days["2024-01-10"]) // older than `since`: no daily values
+        XCTAssertEqual(s.weights["2024-01-10"], 90) // but every weighing is kept
+    }
+}
+

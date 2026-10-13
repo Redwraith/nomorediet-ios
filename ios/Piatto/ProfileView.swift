@@ -17,6 +17,9 @@ struct ProfileTab: View {
     @State private var geminiReady = GeminiAI.isReady
     @State private var geminiStatus: String?
     @ObservedObject private var ai = AIGuard.shared
+    @Environment(\.scenePhase) private var scenePhase
+    /// Waiting to come back from Google / Anthropic with a key copied: it is picked up and checked by itself.
+    @State private var waitingForKey: AIGuard.Engine?
 
     var body: some View {
         NavigationStack {
@@ -69,24 +72,19 @@ struct ProfileTab: View {
                                 Keychain.delete(Keychain.gemini); geminiReady = false; geminiStatus = nil
                             }
                         } else {
-                            Link(destination: GeminiAI.keyPage) {
-                                Label("1. Apri AI Studio e premi \"Create API key\"", systemImage: "arrow.up.right.square")
-                            }
                             Button {
-                                if let pasted = UIPasteboard.general.string { geminiKey = pasted.trimmingCharacters(in: .whitespacesAndNewlines) }
-                            } label: { Label("2. Incolla la chiave copiata", systemImage: "doc.on.clipboard") }
-                            SecureField("Chiave Gemini (AIza…)", text: $geminiKey)
-                                .textInputAutocapitalization(.never).autocorrectionDisabled()
-                            Button("3. Collega") {
-                                let key = geminiKey
-                                geminiStatus = "Controllo…"
-                                Task {
-                                    let result = await GeminiAI.connect(key: key)
-                                    geminiStatus = result.message
-                                    if result.ok { Keychain.save(key, service: Keychain.gemini); geminiReady = true; geminiKey = "" }
-                                }
+                                waitingForKey = .gemini
+                                UIApplication.shared.open(GeminiAI.keyPage)
+                            } label: { Label("Accedi con Google e collega Gemini", systemImage: "person.badge.key.fill") }
+                                .accessibilityIdentifier("gemini-login")
+                            Text("Entri con il tuo account Google, premi \"Create API key\" e poi \"Copy\". Torna qui: la chiave viene presa e collegata da sola, una volta per sempre.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                            DisclosureGroup("Incolla a mano") {
+                                SecureField("Chiave Gemini (AIza…)", text: $geminiKey)
+                                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                Button("Collega") { connectGemini(geminiKey) }.disabled(geminiKey.count < 20)
                             }
-                            .disabled(geminiKey.count < 20)
+                            .font(.footnote)
                         }
                         if let geminiStatus { Text(geminiStatus).font(.footnote).foregroundStyle(.secondary) }
                     } else if hasKey {
@@ -109,7 +107,11 @@ struct ProfileTab: View {
                             }
                         }
                         .disabled(!apiKey.hasPrefix("sk-ant-"))
-                        Link("Crea una chiave su console.anthropic.com", destination: URL(string: "https://console.anthropic.com/settings/keys")!)
+                        Button {
+                            waitingForKey = .claude
+                            UIApplication.shared.open(URL(string: "https://console.anthropic.com/settings/keys")!)
+                        } label: { Label("Accedi ad Anthropic e collega Claude", systemImage: "person.badge.key.fill") }
+                        Text("Crea una chiave e copiala: tornando qui viene collegata da sola.").font(.footnote).foregroundStyle(.secondary)
                     }
                     if let keyStatus, ai.settings.engine == .claude { Text(keyStatus).font(.footnote).foregroundStyle(.secondary) }
                 } header: { Text("Analisi AI") } footer: {
@@ -206,7 +208,37 @@ struct ProfileTab: View {
             }
             .navigationTitle("Profilo")
             .onAppear { manualText = store.profile.manualKcal.map { $0.it() } ?? "" }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { pickUpCopiedKey() } }
             .onChange(of: store.profile) { _, _ in Sync.afterFoodChange(context: context, day: DayId.today) }
+        }
+    }
+
+    private func connectGemini(_ key: String) {
+        geminiStatus = "Controllo…"
+        Task {
+            let result = await GeminiAI.connect(key: key)
+            geminiStatus = result.message
+            if result.ok { Keychain.save(key, service: Keychain.gemini); geminiReady = true; geminiKey = "" }
+        }
+    }
+
+    /// Back from AI Studio / the Anthropic console with a key copied: recognise it and connect it.
+    private func pickUpCopiedKey() {
+        guard let engine = waitingForKey, UIPasteboard.general.hasStrings,
+              let text = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+        switch engine {
+        case .gemini where text.hasPrefix("AIza") && text.count >= 30:
+            waitingForKey = nil
+            connectGemini(text)
+        case .claude where text.hasPrefix("sk-ant-"):
+            waitingForKey = nil
+            keyStatus = "Controllo…"
+            Task {
+                let result = await FoodAI.test(key: text)
+                keyStatus = result
+                if result.hasSuffix("✓") { Keychain.save(text); hasKey = true }
+            }
+        default: break
         }
     }
 }
@@ -358,6 +390,9 @@ private struct HealthStatusRow: View {
                 Button("Collega Apple Salute") { connect() }.font(.footnote.weight(.semibold))
             } else {
                 Button("Sincronizza adesso") { connect() }.font(.footnote.weight(.semibold))
+            }
+            NavigationLink { HealthExportImportView() } label: {
+                Text("Importa tutto da Salute (anche lo storico)").font(.footnote.weight(.semibold))
             }
             NavigationLink { HealthShortcutGuide() } label: {
                 Text(connected ? "Collegamento con Comandi rapidi" : "Installata con SideStore? Collegala con Comandi rapidi")
