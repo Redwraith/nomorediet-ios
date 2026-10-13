@@ -207,6 +207,22 @@ jobs:
           done
           exit 1
 
+      - name: SideStore source in this repository (no extra token)
+        # https://github.com/<owner>/nomorediet-ios/releases/download/piatto-ios/apps.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" out/Payload/Nomorediet.app/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" out/Payload/Nomorediet.app/Info.plist)
+          BASE="https://github.com/${{ github.repository }}/releases/download/piatto-ios"
+          awk '/^## /{n++} n==1 && !/^## /' ../docs/CHANGELOG.md > notes.txt
+          cp Piatto/Assets.xcassets/AppIcon.appiconset/icon-1024.png out/icon.png
+          python3 ../scripts/make_source.py "" "$VERSION" "$BUILD" out/Nomorediet.ipa \
+            "$BASE/Nomorediet.ipa" "$BASE/icon.png" notes.txt > out/apps.json
+          gh release upload piatto-ios out/apps.json out/icon.png --clobber
+          echo "Fonte SideStore: $BASE/apps.json"
+
       - name: Publish the over-the-air update (SideStore source)
         if: env.UPDATES_TOKEN != ''
         env:
