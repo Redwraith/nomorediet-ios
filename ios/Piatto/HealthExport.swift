@@ -321,23 +321,32 @@ enum ZipReader {
         defer { buffer.deallocate() }
         var left = count
         var status = COMPRESSION_STATUS_OK
-        while status == COMPRESSION_STATUS_OK {
+        while status != COMPRESSION_STATUS_END {
             let chunk = left > 0 ? try read(input, Int(min(left, 1 << 20))) : Data()
             left -= UInt64(chunk.count)
-            let last = left == 0
+            let finalize = left == 0 || chunk.isEmpty
+            var idle = 0
             try chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
                 stream.pointee.src_ptr = raw.bindMemory(to: UInt8.self).baseAddress ?? UnsafePointer(buffer)
                 stream.pointee.src_size = chunk.count
-                repeat {
+                while true {
                     stream.pointee.dst_ptr = buffer
                     stream.pointee.dst_size = outSize
-                    status = compression_stream_process(stream, last ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
+                    status = compression_stream_process(stream, finalize ? Int32(COMPRESSION_STREAM_FINALIZE.rawValue) : 0)
                     guard status != COMPRESSION_STATUS_ERROR else { throw Failure.unsupported }
                     let produced = outSize - stream.pointee.dst_size
                     if produced > 0 { out.write(Data(bytes: buffer, count: produced)) }
-                } while status == COMPRESSION_STATUS_OK && (stream.pointee.src_size > 0 || stream.pointee.dst_size == 0)
+                    if status == COMPRESSION_STATUS_END { return }
+                    // input used up and room left in the output: wait for the next chunk, unless this is the last one,
+                    // where the decoder is called until it says END (it can hold back output between calls)
+                    if stream.pointee.src_size == 0 && produced < outSize {
+                        if !finalize { return }
+                        idle = produced == 0 ? idle + 1 : 0
+                        if idle > 2 { return }
+                    }
+                }
             }
-            if last && status == COMPRESSION_STATUS_OK && chunk.isEmpty { break }
+            if finalize { break }
         }
     }
 
