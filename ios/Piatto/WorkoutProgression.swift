@@ -56,7 +56,7 @@ enum Progression {
     static func note(_ exercise: Exercise, phase: Phase) -> String? {
         var parts: [String] = []
         switch phase {
-        case .month(1): parts.append("+1 ripetizione o +2,5 kg rispetto alla settimana scorsa.")
+        case .month(1): break
         case .month(2): parts.append("Tempo 3-1-1-0: 3 s a scendere, 1 s di pausa in basso, 1 s a salire. Carico −10% rispetto al mese 1.")
             if exercise.role == .isolamento { parts.append("Eccentrica di 3 s.") }
         case .month(3):
@@ -240,5 +240,68 @@ enum ExerciseSwaps {
             if hits > 0, hits > (best?.1 ?? 0) || hits == best?.1 && name.count < (best?.0.count ?? .max) { best = (name, hits) }
         }
         return best?.0
+    }
+}
+
+/// Weekly set wave: week 1 → 3 sets per exercise, week 2 → 4, week 3 → 5; then more weight and back to 3.
+/// Deload weeks keep their own sets.
+enum SetWave {
+    private static let key = "wave.start"
+
+    /// Monday of the week the current wave started (set the first time it is needed: that week has 3 sets).
+    static var start: Date {
+        get {
+            if let saved = UserDefaults.standard.object(forKey: key) as? Date { return saved }
+            let monday = mondayOf(.now)
+            UserDefaults.standard.set(monday, forKey: key)
+            return monday
+        }
+        set { UserDefaults.standard.set(mondayOf(newValue), forKey: key) }
+    }
+
+    static func mondayOf(_ date: Date) -> Date {
+        var cal = Calendar(identifier: .iso8601)
+        cal.timeZone = .current
+        return cal.dateInterval(of: .weekOfYear, for: date)?.start ?? Calendar.current.startOfDay(for: date)
+    }
+
+    /// 0, 1 or 2: the week of the wave `date` falls in.
+    static func week(on date: Date = .now, start: Date = start) -> Int {
+        let weeks = Calendar.current.dateComponents([.day], from: mondayOf(start), to: mondayOf(date)).day.map { $0 / 7 } ?? 0
+        return ((weeks % 3) + 3) % 3
+    }
+
+    static func sets(on date: Date = .now, start: Date = start) -> Int { 3 + week(on: date, start: start) }
+
+    /// Picks the week of the wave for this week (3, 4 or 5 sets), moving the start back accordingly.
+    static func setThisWeek(sets: Int, today: Date = .now) {
+        let back = max(0, min(2, sets - 3))
+        start = Calendar.current.date(byAdding: .day, value: -7 * back, to: mondayOf(today)) ?? today
+    }
+
+    static func apply(_ exercise: Exercise, phase: Progression.Phase, on date: Date = .now) -> Exercise {
+        guard phase != .deload else { return exercise }
+        var e = exercise
+        e.sets = sets(on: date)
+        return e
+    }
+
+    static var title: String {
+        switch week() {
+        case 0: "Settimana da 3 serie · carico nuovo"
+        case 1: "Settimana da 4 serie · stesso carico"
+        default: "Settimana da 5 serie · la prossima aumenti i kg"
+        }
+    }
+
+    /// The load to use, from the best weight of the last session and whether a new wave has started since.
+    static func advice(lastBest: Double, lastDay: String, today: Date = .now) -> String {
+        let step = lastBest < 20 ? 1.0 : 2.5
+        let lastDate = DayId.date(lastDay)
+        let newWave = week(on: today) == 0 && week(on: lastDate) != 0
+        if newWave && lastBest > 0 {
+            return "Nuova settimana da 3 serie: aumenta il carico, prova \((lastBest + step).it(1)) kg (l'ultima volta \(lastBest.it(1)) kg)."
+        }
+        return "\(sets(on: today)) serie con \(lastBest.it(1)) kg, come l'ultima volta."
     }
 }

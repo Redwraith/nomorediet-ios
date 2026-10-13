@@ -15,14 +15,18 @@ struct WorkoutTab: View {
     @State private var syncMessage: String?
     @State private var showHistory = false
 
-    /// Today's session from the weekday (Monday A1, Tuesday A2…), else the next training day.
-    private var nextDay: WorkoutDay {
-        for offset in 0..<7 {
-            if let date = Calendar.current.date(byAdding: .day, value: offset, to: .now), let day = WorkoutPlan.day(on: date) { return day }
-        }
-        return WorkoutPlan.days.first ?? WorkoutPlan.nomoredietDays[0]
+    /// A choice made today with the arrows ("I skipped A1, go back to it").
+    @AppStorage("workout.pick." + DayId.today) private var pick = -1
+    @State private var waveSets = SetWave.sets()
+
+    private var currentIndex: Int {
+        WorkoutPlan.current(logs: logs.map { (day: $0.day, exercise: $0.exercise) }, pick: pick >= 0 ? pick : nil)
     }
-    private var isToday: Bool { WorkoutPlan.day(on: .now) != nil }
+    /// Today's session in sequence: after the last one done, so a skipped workout is not lost.
+    private var nextDay: WorkoutDay {
+        WorkoutPlan.days.isEmpty ? WorkoutPlan.nomoredietDays[0] : WorkoutPlan.days[currentIndex]
+    }
+    private var isToday: Bool { true }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -38,6 +42,8 @@ struct WorkoutTab: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    todayCard
+                    waveCard
                     planSourceCard
                     ForEach(WorkoutPlan.days) { day in
                         NavigationLink(value: day) {
@@ -86,6 +92,63 @@ struct WorkoutTab: View {
                 }
             }
         }
+    }
+
+    /// Today's workout, with arrows to go back to a skipped one (or forward).
+    private var todayCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Oggi tocca").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Button { choose(currentIndex - 1) } label: { Image(systemName: "chevron.left.circle.fill").font(.title) }
+                    .accessibilityLabel("Allenamento precedente")
+                    .accessibilityIdentifier("workout-prev")
+                VStack(spacing: 2) {
+                    Text(nextDay.name).font(.title3.bold())
+                    Text(nextDay.focus).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                Button { choose(currentIndex + 1) } label: { Image(systemName: "chevron.right.circle.fill").font(.title) }
+                    .accessibilityLabel("Allenamento successivo")
+                    .accessibilityIdentifier("workout-next")
+            }
+            .foregroundStyle(Theme.accent)
+            Text(pick >= 0 ? "Scelto da te. " : "Segue l'ultimo allenamento fatto: se ne salti uno, è ancora lui il prossimo. ")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                if pick >= 0 {
+                    Button("Torna al suggerito") { pick = -1 }.buttonStyle(.bordered).controlSize(.small)
+                }
+                Spacer()
+                Button { path = [nextDay] } label: { Label("Inizia", systemImage: "play.fill") }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("workout-start")
+            }
+        }
+        .padding(14)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func choose(_ index: Int) {
+        let n = max(WorkoutPlan.days.count, 1)
+        pick = ((index % n) + n) % n
+    }
+
+    /// 3 → 4 → 5 sets, then more weight and back to 3.
+    private var waveCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Serie per esercizio questa settimana").font(.subheadline.weight(.semibold))
+            Picker("Serie", selection: $waveSets) {
+                Text("3 serie").tag(3)
+                Text("4 serie").tag(4)
+                Text("5 serie").tag(5)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: waveSets) { _, sets in SetWave.setThisWeek(sets: sets) }
+            Text("Ogni settimana una serie in più: 3, poi 4, poi 5. Dopo la settimana da 5 aumenti i kg e ricominci da 3. Cambia da solo ogni lunedì.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var planSourceCard: some View {
@@ -162,8 +225,17 @@ struct DayCard: View {
 struct WorkoutDayView: View {
     var day: WorkoutDay
     @StateObject private var timer = RestTimer.shared
+    @Query private var logs: [SetLog]
     @State private var showTimer = false
     @State private var finished = false
+    @State private var celebrated = false
+
+    /// Sets done today for this day's exercises, and how many the day asks for.
+    private var progress: (done: Int, total: Int, kg: Double) {
+        let names = WorkoutPlan.names(day, on: DayId.today)
+        let today = logs.filter { $0.day == DayId.today && names.contains($0.exercise) }
+        return (today.count, WorkoutPlan.totalSets(day, phase: Progression.phase()), today.reduce(0) { $0 + $1.kg * Double($1.reps) })
+    }
     /// Bumped when an exercise is swapped, to redraw the cards.
     @State private var swaps = 0
 
@@ -173,8 +245,8 @@ struct WorkoutDayView: View {
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(day.focus).font(.headline)
-                    Text(Progression.title(phase)).font(.subheadline).foregroundStyle(Theme.accent)
-                    Text("Serie e ripetizioni cambiano con il mese del ciclo. Dropset solo dove c'è 🔻.")
+                    Text(phase == .deload ? Progression.title(phase) : SetWave.title).font(.subheadline).foregroundStyle(Theme.accent)
+                    Text("Le serie cambiano ogni settimana (3, 4, 5); le ripetizioni con il mese del ciclo. Dropset solo dove c'è 🔻.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -202,7 +274,7 @@ struct WorkoutDayView: View {
                         Text("Alterna \(block.label)1 e \(block.label)2: una serie dell'uno, \(block.restSeconds) s di recupero, una serie dell'altro.")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         ForEach(Array(block.exercises.enumerated()), id: \.element.id) { index, original in
-                            let exercise = ExerciseSwaps.resolved(Progression.apply(original, phase: phase))
+                            let exercise = ExerciseSwaps.resolved(SetWave.apply(Progression.apply(original, phase: phase), phase: phase))
                             let partner = ExerciseSwaps.resolved(block.exercises[(index + 1) % block.exercises.count])
                             ExerciseCard(label: "\(block.label)\(index + 1)", original: original, exercise: exercise, rest: block.restSeconds,
                                          next: partner, note: Progression.note(Progression.apply(original, phase: phase), phase: phase)) { swaps += 1 }
@@ -210,6 +282,8 @@ struct WorkoutDayView: View {
                         }
                     }
                 }
+                Text("\(progress.done) di \(progress.total) serie fatte")
+                    .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                 Button {
                     timer.stop()
                     Supplements.workoutFinished()
@@ -241,10 +315,44 @@ struct WorkoutDayView: View {
             }
         }
         .sheet(isPresented: $showTimer) { TimerSheet().presentationDetents([.medium]) }
-        .alert("Allenamento finito 💪", isPresented: $finished) {
-            Button("Ok") {}
-        } message: {
-            Text(Supplements.creatineTakenToday ? "Ottimo lavoro." : "Ricordati la creatina: 5 g adesso, dopo l'allenamento.")
+        .sheet(isPresented: $finished) {
+            FinishedView(sets: progress.done, kg: progress.kg)
+                .presentationDetents([.medium])
+        }
+        // the last set of the day: congratulations without having to tap "Termina"
+        .onChange(of: progress.done) { _, done in
+            guard done >= progress.total, progress.total > 0, !celebrated else { return }
+            celebrated = true
+            timer.stop()
+            Supplements.workoutFinished()
+            finished = true
+        }
+    }
+}
+
+/// "Bravo, ce l'hai fatta": shown (and said aloud) when the last set is logged or the workout is ended.
+struct FinishedView: View {
+    var sets: Int
+    var kg: Double
+    @Environment(\.dismiss) private var dismiss
+
+    private var message: String { "Bravo, ce l'hai fatta! Hai finito l'allenamento." }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("🏆").font(.system(size: 64))
+            Text("Bravo, ce l'hai fatta!").font(.largeTitle.bold()).multilineTextAlignment(.center)
+            Text("Hai finito l'allenamento.").font(.title3)
+            Text("\(sets) serie · \(kg.it()) kg sollevati in totale").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+            if !Supplements.creatineTakenToday {
+                Label("Ricordati la creatina: 5 g adesso.", systemImage: "pills.fill").font(.subheadline).foregroundStyle(.orange)
+            }
+            Button("Grazie!") { dismiss() }.buttonStyle(.borderedProminent).padding(.top, 6)
+        }
+        .padding(24)
+        .onAppear {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            CoachVoice.shared.speak(message)
         }
     }
 }
@@ -278,17 +386,11 @@ struct ExerciseCard: View {
         return logs.filter { $0.day == lastDay }
     }
 
-    /// Double progression: all sets at the top of the range → add 2.5–5% load.
+    /// Set wave: same load while the sets go 3 → 4 → 5, more weight when a new wave starts at 3 sets.
     private var suggestion: String? {
-        guard !lastSession.isEmpty else { return nil }
+        guard let lastDay = lastSession.first?.day else { return nil }
         let best = lastSession.map(\.kg).max() ?? 0
-        let allTop = lastSession.count >= exercise.sets && lastSession.allSatisfy { $0.reps >= exercise.maxReps }
-        if allTop && best > 0 {
-            let step = best < 20 ? 1.0 : 2.5
-            return "Ultima volta \(best.it(1)) kg al massimo delle ripetizioni: oggi prova \((best + step).it(1)) kg."
-        }
-        let reps = lastSession.map { String($0.reps) }.joined(separator: "/")
-        return "Ultima volta \(best.it(1)) kg × \(reps): punta a 1 ripetizione in più per serie."
+        return SetWave.advice(lastBest: best, lastDay: lastDay)
     }
 
     var body: some View {

@@ -591,3 +591,37 @@ final class QuickLogTests: XCTestCase {
     }
 }
 
+final class SetWaveTests: XCTestCase {
+    private func d(_ day: Int, _ month: Int) -> Date { Calendar.current.date(from: DateComponents(year: 2026, month: month, day: day, hour: 12))! }
+
+    func testThreeFourFiveThenAgain() {
+        let start = d(5, 10) // a Monday
+        XCTAssertEqual(SetWave.sets(on: d(5, 10), start: start), 3)
+        XCTAssertEqual(SetWave.sets(on: d(11, 10), start: start), 3) // Sunday, same week
+        XCTAssertEqual(SetWave.sets(on: d(13, 10), start: start), 4)
+        XCTAssertEqual(SetWave.sets(on: d(21, 10), start: start), 5)
+        XCTAssertEqual(SetWave.sets(on: d(26, 10), start: start), 3)
+        XCTAssertEqual(SetWave.sets(on: d(28, 9), start: start), 5) // the week before the start
+    }
+
+    func testDeloadKeepsItsSets() {
+        let e = Exercise(name: "Panca", pattern: "push_h", sets: 2, reps: "10", rir: "3+", cue: "", stretch: "")
+        XCTAssertEqual(SetWave.apply(e, phase: .deload).sets, 2)
+    }
+}
+
+final class WorkoutSequenceTests: XCTestCase {
+    func testSkippedWorkoutIsStillNext() {
+        let days = WorkoutPlan.days
+        guard days.count >= 2, let first = days[0].blocks.first?.exercises.first?.name,
+              let second = days[1].blocks.first?.exercises.first?.name else { return }
+        // last session was day 1 on Monday; nothing on Tuesday (skipped): Wednesday is still day 2
+        XCTAssertEqual(WorkoutPlan.current(logs: [(day: "2026-10-05", exercise: first)], today: "2026-10-07"), 1)
+        // day 2 done today: today stays day 2
+        XCTAssertEqual(WorkoutPlan.current(logs: [(day: "2026-10-05", exercise: first), (day: "2026-10-07", exercise: second)],
+                                           today: "2026-10-07"), 1)
+        // a choice made with the arrows wins, and wraps around
+        XCTAssertEqual(WorkoutPlan.current(logs: [], today: "2026-10-07", pick: days.count), 0)
+    }
+}
+

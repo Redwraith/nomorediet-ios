@@ -187,7 +187,35 @@ enum WorkoutPlan {
     ]
 
     static func totalSets(_ day: WorkoutDay, phase: Progression.Phase) -> Int {
-        day.blocks.flatMap(\.exercises).reduce(0) { $0 + Progression.apply($1, phase: phase).sets }
+        day.blocks.flatMap(\.exercises).reduce(0) { $0 + SetWave.apply(Progression.apply($1, phase: phase), phase: phase).sets }
+    }
+
+    /// Names a day's sets can be logged under on `logDay`: the plan exercise, its alternatives, the swap used that day.
+    static func names(_ day: WorkoutDay, on logDay: String) -> Set<String> {
+        Set(day.blocks.flatMap { $0.exercises.flatMap { e in [e.name] + e.busy + [ExerciseSwaps.swap(for: e.name, day: logDay)?.name].compactMap { $0 } } })
+    }
+
+    /// The plan day a session belongs to: the one with the most of its exercises logged.
+    static func dayIndex(exercises: Set<String>, on logDay: String) -> Int? {
+        let scores = days.enumerated().map { ($0.offset, names($0.element, on: logDay).intersection(exercises).count) }
+        guard let best = scores.max(by: { $0.1 < $1.1 }), best.1 > 0 else { return nil }
+        return best.0
+    }
+
+    /// Today's workout follows the sequence, not the weekday: a skipped session is simply the next one.
+    /// Today's sets decide it if any; otherwise the day after the last session; with no history, the weekday.
+    /// `pick` is a choice made today with the arrows.
+    static func current(logs: [(day: String, exercise: String)], today: String = DayId.today, pick: Int? = nil) -> Int {
+        guard !days.isEmpty else { return 0 }
+        if let pick { return ((pick % days.count) + days.count) % days.count }
+        let todayNames = Set(logs.filter { $0.day == today }.map(\.exercise))
+        if !todayNames.isEmpty, let i = dayIndex(exercises: todayNames, on: today) { return i }
+        if let lastDay = logs.map(\.day).filter({ $0 < today }).max() {
+            let names = Set(logs.filter { $0.day == lastDay }.map(\.exercise))
+            if let i = dayIndex(exercises: names, on: lastDay) { return (i + 1) % days.count }
+        }
+        let weekday = day(on: DayId.date(today)).flatMap { d in days.firstIndex(of: d) }
+        return weekday ?? 0
     }
 
     /// Plain text of the plan, for sharing.

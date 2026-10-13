@@ -1,5 +1,10 @@
 # Nomorediet — Novità
 
+## 4.9.9
+- Allenamento saltato? Nessun problema: in Allenamento il riquadro "Oggi tocca" segue l'ultimo allenamento fatto, quindi quello saltato resta il prossimo. Con le frecce ‹ › torni indietro o vai avanti, "Inizia" lo apre.
+- "Bravo, ce l'hai fatta! Hai finito l'allenamento": appena segni l'ultima serie della giornata (o premi Termina) compare il riepilogo, con le serie fatte e i kg sollevati, e il Coach te lo dice a voce.
+- Serie a onde: una settimana 3 serie per esercizio, la successiva 4, poi 5. Dopo la settimana da 5 l'app ti propone più kg (+2,5 kg, +1 kg sui pesi sotto i 20) e si ricomincia da 3. Cambia da solo ogni lunedì; nel riquadro "Serie per esercizio questa settimana" puoi dire a che punto sei. Le settimane di scarico restano come sono.
+
 ## 4.9.8
 - Segnare un pasto in un tocco: ogni pasto vuoto mostra "Come ieri" (ricopia quello che avevi mangiato ieri allo stesso pasto) e tre stime, Leggero, Normale e Abbondante, calcolate sul tuo obiettivo di calorie. Meglio una stima che un pasto mancante: il totale del giorno e l'andamento del peso restano affidabili. Puoi sempre aprire la voce e correggerla.
 - Il promemoria serale ti ricorda di stimare i pasti che mancano.
