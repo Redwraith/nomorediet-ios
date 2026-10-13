@@ -578,3 +578,16 @@ final class ProductTextTests: XCTestCase {
         XCTAssertEqual(TextReader.productQuery("350g"), "")
     }
 }
+
+final class QuickLogTests: XCTestCase {
+    func testEstimatesFollowTheDayGoal() {
+        let goals = Goals(kcal: 2000, protein: 150, carbs: 220, fat: 60, fiber: 30, iron: 0, calcium: 0, b12: 0, zinc: 0)
+        XCTAssertEqual(QuickLog.estimate(.pranzo, .normale, goals: goals).kcal, 700)
+        XCTAssertEqual(QuickLog.estimate(.colazione, .leggero, goals: goals).kcal, 260)
+        XCTAssertEqual(QuickLog.estimate(.cena, .abbondante, goals: goals).kcal, 980)
+        XCTAssertEqual(QuickLog.estimate(.pranzo, .normale, goals: goals).protein, 52.5, accuracy: 0.01)
+        let day = MealSlot.allCases.reduce(0) { $0 + QuickLog.share($1) }
+        XCTAssertEqual(day, 1, accuracy: 0.001)
+    }
+}
+

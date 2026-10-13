@@ -10,7 +10,7 @@ enum Reminders {
         Slot(id: "colazione", body: "Registra la colazione: basta una foto.", time: "08:30"),
         Slot(id: "pranzo", body: "Com'era il pranzo? Fotografa il piatto.", time: "13:15"),
         Slot(id: "cena", body: "Registra la cena prima di dimenticartene.", time: "20:15"),
-        Slot(id: "checkin", body: "Check-in serale: guarda come è andata oggi.", time: "21:45"),
+        Slot(id: "checkin", body: "Manca qualche pasto? Segnalo con una stima in un tocco: leggero, normale o abbondante.", time: "21:45"),
     ]
     private static let defaults = UserDefaults.standard
 

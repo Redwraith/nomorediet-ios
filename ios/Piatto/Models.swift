@@ -236,3 +236,39 @@ extension String {
         Double(trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
     }
 }
+
+/// One-tap logging for a meal that was not weighed or searched: a size estimate, or the same as yesterday.
+/// A rough number beats a missing meal: the day's total and the weight trend stay meaningful.
+enum QuickLog {
+    enum Size: String, CaseIterable {
+        case leggero, normale, abbondante
+        var title: String { rawValue.capitalized }
+        var factor: Double {
+            switch self {
+            case .leggero: 0.65
+            case .normale: 1
+            case .abbondante: 1.4
+            }
+        }
+    }
+
+    /// Share of the day's calories a meal usually takes.
+    static func share(_ slot: MealSlot) -> Double {
+        switch slot {
+        case .colazione: 0.2
+        case .pranzo: 0.35
+        case .spuntino: 0.1
+        case .cena: 0.35
+        }
+    }
+
+    /// kcal rounded to 10, with protein, carbs, fat and fibre in the same proportions as the day's goals.
+    static func estimate(_ slot: MealSlot, _ size: Size, goals: Goals) -> Nutrients {
+        let kcal = (goals.kcal * share(slot) * size.factor / 10).rounded() * 10
+        let k = goals.kcal > 0 ? kcal / goals.kcal : 0
+        return Nutrients(kcal: kcal, protein: goals.protein * k, carbs: goals.carbs * k, fat: goals.fat * k, fiber: goals.fiber * k)
+    }
+
+    static func name(_ slot: MealSlot, _ size: Size) -> String { "\(slot.title) \(size.rawValue) (stima)" }
+}
+

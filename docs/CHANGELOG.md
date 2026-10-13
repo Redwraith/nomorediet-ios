@@ -1,5 +1,9 @@
 # Nomorediet — Novità
 
+## 4.9.8
+- Segnare un pasto in un tocco: ogni pasto vuoto mostra "Come ieri" (ricopia quello che avevi mangiato ieri allo stesso pasto) e tre stime, Leggero, Normale e Abbondante, calcolate sul tuo obiettivo di calorie. Meglio una stima che un pasto mancante: il totale del giorno e l'andamento del peso restano affidabili. Puoi sempre aprire la voce e correggerla.
+- Il promemoria serale ti ricorda di stimare i pasti che mancano.
+
 ## 4.9.7
 - Leggi il nome dalla confezione: inquadra il prodotto, tocca la marca e il nome stampati sulla confezione e premi Cerca. Il testo viene letto sull'iPhone (senza internet), pulito da pesi e maiuscole, e cercato tra gli alimenti, nel database e su Open Food Facts, che danno il nome giusto del prodotto con i suoi valori. Lo trovi nella barra in basso della ricerca (icona testo) e nel menu + di ogni pasto.
 

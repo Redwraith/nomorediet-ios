@@ -170,9 +170,7 @@ struct TodayView: View {
                 } label: { Image(systemName: "plus.circle").font(.title3) }
                 .accessibilityLabel("Altri modi per aggiungere a \(slot.title)")
             }
-            if items.isEmpty {
-                Text("Niente ancora").font(.subheadline).foregroundStyle(.tertiary)
-            }
+            if items.isEmpty { quickLog(slot) }
             ForEach(items) { entry in
                 EntryRow(entry: entry)
                     .contextMenu {
@@ -188,6 +186,41 @@ struct TodayView: View {
         }
         .padding(14)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    /// An empty meal can be filled in one tap: the same as yesterday, or a size estimate.
+    private func quickLog(_ slot: MealSlot) -> some View {
+        let yesterday = entries.filter { $0.day == DayId.shift(app.day, by: -1) && $0.slot == slot }
+        let yesterdayKcal = yesterday.reduce(0) { $0 + $1.nutrients.kcal }
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Niente ancora · segnalo in un tocco").font(.subheadline).foregroundStyle(.tertiary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    if !yesterday.isEmpty {
+                        Button("Come ieri · \(yesterdayKcal.it())") {
+                            withAnimation {
+                                for e in yesterday {
+                                    context.insert(FoodEntry(day: app.day, slot: slot, name: e.name, grams: e.grams, per100: e.per100))
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("quick-yesterday-\(slot.rawValue)")
+                    }
+                    ForEach(QuickLog.Size.allCases, id: \.self) { size in
+                        let estimate = QuickLog.estimate(slot, size, goals: goals)
+                        Button("\(size.title) · \(estimate.kcal.it())") {
+                            withAnimation {
+                                context.insert(FoodEntry(day: app.day, slot: slot, name: QuickLog.name(slot, size), grams: 100, per100: estimate))
+                            }
+                        }
+                        .accessibilityIdentifier("quick-\(size.rawValue)-\(slot.rawValue)")
+                    }
+                }
+                .font(.footnote)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
     }
 
     private var weightRow: some View {
