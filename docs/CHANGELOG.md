@@ -1,10 +1,12 @@
 # Nomorediet — Novità
 
+## 4.10.1
+- Da Salute a Nomorediet in un tocco: in Salute premi "Esporta tutti i dati sanitari" e nel foglio di condivisione scegli Nomorediet. L'app apre l'archivio da sola (non serve estrarlo) e importa tutto.
+
 ## 4.10
 - Collegare l'AI senza copiare chiavi a mano: in Profilo → Analisi AI tocca "Accedi con Google e collega Gemini" (o "Accedi ad Anthropic" per Claude), entra con il tuo account, crea la chiave e premi Copia. Tornando in Nomorediet la chiave viene riconosciuta e collegata da sola.
 - La chiave si salva nel Portachiavi iCloud quando è disponibile: dopo una reinstallazione o su un nuovo iPhone non va reinserita.
 - Importa tutto da Salute: Profilo → Apple Salute → "Importa tutto da Salute". Esporti i dati dall'app Salute e Nomorediet legge tutto lo storico (passi, calorie, distanza, esercizio, piani, sonno, battito, HRV, VO₂ max, grasso corporeo) e tutte le pesate di sempre, da iPhone e Apple Watch. I passi contati sia dall'iPhone sia dal Watch non vengono sommati due volte.
-- Da Salute a Nomorediet in un tocco: in Salute premi "Esporta tutti i dati sanitari" e nel foglio di condivisione scegli Nomorediet. L'app apre l'archivio da sola (non serve estrarlo) e importa tutto.
 
 ## 4.9.9
 - Allenamento saltato? Nessun problema: in Allenamento il riquadro "Oggi tocca" segue l'ultimo allenamento fatto, quindi quello saltato resta il prossimo. Con le frecce ‹ › torni indietro o vai avanti, "Inizia" lo apre.
