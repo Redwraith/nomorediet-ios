@@ -1,5 +1,8 @@
 # Nomorediet — Novità
 
+## 4.10.2
+- Importazione da Salute più robusta: export.xml viene letto riga per riga, così l'intestazione del file che Salute scrive non blocca più la lettura. Se qualcosa va storto, il messaggio dice cosa e il pannello di debug (scuoti l'iPhone) mostra a che punto si è fermata.
+
 ## 4.10.1
 - Da Salute a Nomorediet in un tocco: in Salute premi "Esporta tutti i dati sanitari" e nel foglio di condivisione scegli Nomorediet. L'app apre l'archivio da sola (non serve estrarlo) e importa tutto.
 

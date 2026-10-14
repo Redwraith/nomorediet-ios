@@ -120,7 +120,7 @@ struct RootView: View {
                 if let summary, summary.records > 0 {
                     healthMessage = ShortcutHealth.importExport(summary, context: context)
                 } else {
-                    healthMessage = "Non trovo dati di Salute in questo file: usa export.zip o export.xml di \"Esporta tutti i dati sanitari\"."
+                    healthMessage = "Non trovo dati di Salute in questo file: usa export.zip o export.xml di \"Esporta tutti i dati sanitari\". Dettagli nel pannello di debug (scuoti l'iPhone)."
                 }
                 DebugLog.shared.add("info", "health", healthMessage ?? "")
             }
@@ -196,7 +196,12 @@ enum DeepLink {
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             let copy = FileManager.default.temporaryDirectory.appendingPathComponent("salute-" + url.lastPathComponent)
             try? FileManager.default.removeItem(at: copy)
-            guard (try? FileManager.default.copyItem(at: url, to: copy)) != nil else { return }
+            do { try FileManager.default.copyItem(at: url, to: copy) } catch {
+                DebugLog.shared.add("error", "health", "File ricevuto ma non copiabile: \(url.lastPathComponent) (\(error.localizedDescription))")
+                return
+            }
+            let size = (try? FileManager.default.attributesOfItem(atPath: copy.path)[.size] as? Int) ?? 0
+            DebugLog.shared.add("info", "health", "File ricevuto: \(url.lastPathComponent), \(size / 1_000_000) MB")
             PendingAction.set(["action": "healthExport", "path": copy.path])
             return
         }

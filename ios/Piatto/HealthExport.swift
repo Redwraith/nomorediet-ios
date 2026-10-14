@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// Apple Health's own full export (Salute → profilo → "Esporta tutti i dati sanitari" → export.zip → export.xml).
 /// It holds every record ever saved, from iPhone and Watch: read in a stream (the file can be hundreds of MB),
 /// turned into one value per day, and merged with the data from the Shortcuts automation.
-final class HealthExportReader: NSObject, XMLParserDelegate {
+final class HealthExportReader {
     struct Summary {
         /// day → metric → value, same metric names as `ShortcutHealth.metrics`.
         var days: [String: [String: Double]] = [:]
@@ -55,30 +55,75 @@ final class HealthExportReader: NSObject, XMLParserDelegate {
     }()
 
     /// `since`: oldest day kept for the daily values (weights are always kept, all of them).
-    init(since: String) { self.since = since }
+    private init(since: String) { self.since = since }
 
+    /// Reads export.xml line by line instead of with XMLParser: Health writes one element per line, and its export
+    /// often carries a DOCTYPE that strict XML parsers reject, which would stop the import at the first line.
     static func read(_ url: URL, since: String) -> Summary? {
-        guard let stream = InputStream(url: url) else { return nil }
+        guard let file = try? FileHandle(forReadingFrom: url) else {
+            DebugLog.shared.add("error", "health", "Export: non riesco ad aprire \(url.lastPathComponent)")
+            return nil
+        }
+        defer { try? file.close() }
         let reader = HealthExportReader(since: since)
-        let parser = XMLParser(stream: stream)
-        parser.shouldResolveExternalEntities = false
-        parser.delegate = reader
-        guard parser.parse() || reader.summary.records > 0 else { return nil }
+        var pending = Data()
+        let newline = UInt8(ascii: "\n")
+        while let chunk = try? file.read(upToCount: 4 << 20), !chunk.isEmpty {
+            pending.append(chunk)
+            var start = pending.startIndex
+            while let end = pending[start...].firstIndex(of: newline) {
+                reader.line(pending[start..<end])
+                start = pending.index(after: end)
+            }
+            pending = Data(pending[start...])
+        }
+        if !pending.isEmpty { reader.line(pending[...]) }
+        DebugLog.shared.add("info", "health", "Export letto: \(reader.recordLines) righe Record, \(reader.summary.records) usate")
         return reader.finish()
     }
 
     /// For tests: the same reading from XML text.
     static func read(xml: String, since: String) -> Summary {
         let reader = HealthExportReader(since: since)
-        let parser = XMLParser(data: Data(xml.utf8))
-        parser.delegate = reader
-        parser.parse()
+        for line in xml.split(separator: "\n", omittingEmptySubsequences: true) { reader.line(Data(line.utf8)[...]) }
         return reader.finish()
     }
 
-    func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
-                attributes a: [String: String]) {
-        guard name == "Record", let type = a["type"], let start = a["startDate"], start.count >= 10 else { return }
+    private(set) var recordLines = 0
+    private static let recordPrefix = Array("<Record ".utf8)
+
+    /// One line of export.xml: only `<Record …` lines matter (their attributes are all on that line).
+    private func line(_ bytes: Data.SubSequence) {
+        guard let first = bytes.firstIndex(where: { $0 != 32 && $0 != 9 }),
+              bytes[first...].starts(with: Self.recordPrefix) else { return }
+        recordLines += 1
+        guard let text = String(data: Data(bytes[first...]), encoding: .utf8) else { return }
+        record(Self.attributes(text))
+    }
+
+    /// `key="value"` pairs of an XML start tag, with the five standard entities decoded.
+    static func attributes(_ tag: String) -> [String: String] {
+        var out: [String: String] = [:]
+        var rest = tag[...]
+        while let eq = rest.range(of: "=\"") {
+            let keyPart = rest[..<eq.lowerBound]
+            let key = keyPart.split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "<" }).last.map(String.init) ?? ""
+            let valueStart = eq.upperBound
+            guard let close = rest[valueStart...].firstIndex(of: "\"") else { break }
+            var value = String(rest[valueStart..<close])
+            if value.contains("&") {
+                for (entity, char) in [("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&apos;", "'"), ("&amp;", "&")] {
+                    value = value.replacingOccurrences(of: entity, with: char)
+                }
+            }
+            out[key] = value
+            rest = rest[rest.index(after: close)...]
+        }
+        return out
+    }
+
+    private func record(_ a: [String: String]) {
+        guard let type = a["type"], let start = a["startDate"], start.count >= 10 else { return }
         let day = String(start.prefix(10))
         let source = a["sourceName"] ?? ""
         if type == Self.sleepType {
@@ -365,8 +410,13 @@ extension HealthExportReader {
         let xml = FileManager.default.temporaryDirectory.appendingPathComponent("health-export.xml")
         defer { try? FileManager.default.removeItem(at: xml) }
         do { try ZipReader.extract(url, entryEndingWith: "/export.xml", to: xml) } catch {
-            do { try ZipReader.extract(url, entryEndingWith: "export.xml", to: xml) } catch { return nil }
+            do { try ZipReader.extract(url, entryEndingWith: "export.xml", to: xml) } catch {
+                DebugLog.shared.add("error", "health", "Export: zip non leggibile (\(error))")
+                return nil
+            }
         }
+        let size = (try? FileManager.default.attributesOfItem(atPath: xml.path)[.size] as? Int) ?? 0
+        DebugLog.shared.add("info", "health", "Export: export.xml estratto, \(size / 1_000_000) MB")
         return read(xml, since: since)
     }
 }
