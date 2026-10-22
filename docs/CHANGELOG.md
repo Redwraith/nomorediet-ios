@@ -1,5 +1,11 @@
 # Nomorediet — Novità
 
+## 4.11
+- Oggi più semplice: scrivi o tieni premuto e di' cosa hai mangiato ("a colazione caffè e 2 fette biscottate, a pranzo 80 g di pasta al pesto"). L'AI che hai scelto in Profilo (Claude, Gemini o quella dell'iPhone) riconosce alimenti e grammi e mette ogni cosa nel pasto giusto; se non dici il pasto, usa quello dell'ora. Un tocco annulla l'inserimento, toccando una voce correggi i grammi.
+- Ultima seduta della scheda del Calendario (femorali e glutei) con 4 esercizi in più: hip thrust, calf in piedi, hyperextension per glutei e crunch al cavo.
+- Molte più alternative in "Cambia esercizio" (oltre 130), anche per pullover, adductor e abductor machine.
+- Apple Salute diretto: installando Nomorediet con Impactor dal PC (invece che con SideStore) il permesso di Salute resta, e puoi condividere solo passi e peso.
+
 ## 4.10.2
 - Importazione da Salute più robusta: export.xml viene letto riga per riga, così l'intestazione del file che Salute scrive non blocca più la lettura. Se qualcosa va storto, il messaggio dice cosa e il pannello di debug (scuoti l'iPhone) mostra a che punto si è fermata.
 

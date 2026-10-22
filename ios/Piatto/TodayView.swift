@@ -45,8 +45,7 @@ struct TodayView: View {
                     RingsCard(totals: totals, goals: goals, big: store.profile.simpleMode)
                     dayKindPicker
                     if app.day == DayId.today { SupplementsCard() }
-                    if store.profile.simpleMode { simpleButtons }
-                    if !saved.isEmpty { repeatRow }
+                    SayMealCard()
                     ForEach(MealSlot.allCases) { slot in mealSection(slot) }
                     if !store.profile.simpleMode { MicronutrientsCard(totals: totals, goals: goals, vegetarian: store.profile.vegetarian) }
                     weightRow
@@ -56,17 +55,6 @@ struct TodayView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle(DayId.label(app.day))
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        ForEach(MealSlot.allCases) { slot in
-                            Button { app.sheet = .addFood(slot, .search) } label: { Label(slot.title, systemImage: slot.icon) }
-                        }
-                    } label: { Image(systemName: "plus.circle.fill").font(.title2) }
-                    primaryAction: { app.sheet = .addFood(.now, .search) }
-                    .accessibilityIdentifier("add-food")
-                }
-            }
             .onChange(of: dayEntries.count) { _, _ in Sync.afterFoodChange(context: context, day: app.day) }
         }
     }
@@ -142,35 +130,8 @@ struct TodayView: View {
                 Label(slot.title, systemImage: slot.icon).font(.headline)
                 Spacer()
                 if kcal > 0 { Text("\(kcal.it()) kcal").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary) }
-                // one tap: photo of the plate or of the pack (barcode and name are read too), or scan the barcode
-                Button { app.sheet = .addFood(slot, .photo) } label: {
-                    Image(systemName: "camera.fill").font(.title3)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Foto per \(slot.title)")
-                .accessibilityIdentifier("meal-photo-\(slot.rawValue)")
-                Button { app.sheet = .addFood(slot, .barcode) } label: {
-                    Image(systemName: "barcode.viewfinder").font(.title3)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Codice a barre per \(slot.title)")
-                .accessibilityIdentifier("meal-barcode-\(slot.rawValue)")
-                Menu {
-                    Button { app.sheet = .addFood(slot, .search) } label: { Label("Cerca alimento", systemImage: "magnifyingglass") }
-                    Button { app.sheet = .addFood(slot, .describe) } label: { Label("Descrivi a voce o per iscritto", systemImage: "text.bubble") }
-                    Button { app.sheet = .addFood(slot, .barcode) } label: { Label("Codice a barre", systemImage: "barcode.viewfinder") }
-                    Button { app.sheet = .addFood(slot, .text) } label: { Label("Leggi il nome dalla confezione", systemImage: "text.viewfinder") }
-                    Button { app.sheet = .addFood(slot, .label) } label: { Label("Foto dell'etichetta", systemImage: "doc.text.viewfinder") }
-                    Button { app.sheet = .addFood(slot, .photo) } label: { Label("Foto del piatto", systemImage: "camera") }
-                    Button { app.sheet = .addFood(slot, .manual) } label: { Label("Inserisci a mano", systemImage: "square.and.pencil") }
-                    if !items.isEmpty {
-                        Divider()
-                        Button { Sync.saveMeal(items, slot: slot, context: context) } label: { Label("Salva in Ripeti", systemImage: "star") }
-                    }
-                } label: { Image(systemName: "plus.circle").font(.title3) }
-                .accessibilityLabel("Altri modi per aggiungere a \(slot.title)")
             }
-            if items.isEmpty { quickLog(slot) }
+            if items.isEmpty { Text("Niente ancora").font(.subheadline).foregroundStyle(.tertiary) }
             ForEach(items) { entry in
                 EntryRow(entry: entry)
                     .contextMenu {

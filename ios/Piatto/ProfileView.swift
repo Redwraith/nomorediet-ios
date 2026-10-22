@@ -391,6 +391,10 @@ private struct HealthStatusRow: View {
             } else {
                 Button("Sincronizza adesso") { connect() }.font(.footnote.weight(.semibold))
             }
+            if cache.status?.contains("entitlement") == true || HealthCache.shared.status?.contains("Comandi rapidi") == true {
+                Text("Per collegare Salute direttamente (passi e peso in automatico), installa Nomorediet con Impactor dal PC invece che con SideStore: mantiene il permesso di Salute anche con l'Apple ID gratuito. Poi qui premi \"Collega Apple Salute\" e scegli cosa condividere.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             NavigationLink { HealthExportImportView() } label: {
                 Text("Importa tutto da Salute (anche lo storico)").font(.footnote.weight(.semibold))
             }

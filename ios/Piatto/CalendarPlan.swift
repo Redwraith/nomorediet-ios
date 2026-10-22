@@ -19,7 +19,7 @@ final class PlanStore: ObservableObject {
 
     /// The plan for the profile's sex: Nomorediet has a men's (shoulders and back) and a women's (glutes and legs) plan.
     var days: [WorkoutDay] {
-        if source == .calendar { return calendarDays }
+        if source == .calendar { return WorkoutPlan.withExtras(calendarDays) }
         return Progression.withRoles(ProfileStore.shared.profile.sex == .donna ? WorkoutPlan.womenDays : WorkoutPlan.nomoredietDays)
     }
     var name: String {

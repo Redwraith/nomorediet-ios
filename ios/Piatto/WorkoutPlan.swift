@@ -186,6 +186,33 @@ enum WorkoutPlan {
         Reference(first: "Brummer", year: "2026", journal: "Front Public Health", doi: "10.3389/fpubh.2026.1872337", finding: "Strategie per allenarsi in meno tempo, superset compresi, mantenendo l'efficacia."),
     ]
 
+    /// Exercises Nomorediet adds to the last session of the Calendar plan (femorali/glutei had only 4).
+    static let lastDayExtras: [ExerciseBlock] = [
+        ExerciseBlock(label: "3", restSeconds: 75, exercises: [
+            role(e("Hip thrust", "hip_thrust", 3, "8–12", "1–2", "Mento in basso, spingi con i talloni, 1 s di stretta in alto.", "Scendi con il bacino fino quasi a terra."), .complementare),
+            role(e("Calf raise in piedi", "calf", 3, "10–15", "0–1", "Sali sulle punte in modo controllato, niente rimbalzi.", "2 s di pausa con il tallone in basso."), .isolamento)]),
+        ExerciseBlock(label: "4", restSeconds: 60, exercises: [
+            role(e("Hyperextension 45° per glutei", "hinge", 3, "12–15", "1", "Schiena tonda leggera, spingi il bacino contro il cuscino stringendo i glutei.", "Scendi finché senti tirare i femorali."), .isolamento),
+            role(e("Crunch al cavo", "core", 3, "12–15", "1", "Inginocchiato, arrotola la colonna portando i gomiti verso le ginocchia.", "In alto lascia allungare l'addome prima di ogni ripetizione."), .isolamento)]),
+    ]
+
+    private static func role(_ exercise: Exercise, _ role: Exercise.Role) -> Exercise {
+        var e = exercise
+        e.role = role
+        return e
+    }
+
+    /// The Calendar plan with the extra exercises on its last session (only when that session is short).
+    static func withExtras(_ days: [WorkoutDay]) -> [WorkoutDay] {
+        guard var last = days.last, last.blocks.flatMap(\.exercises).count <= 4 else { return days }
+        let used = Set(last.blocks.map(\.label))
+        for var block in lastDayExtras {
+            if used.contains(block.label) { block.label += "+" }
+            last.blocks.append(block)
+        }
+        return Array(days.dropLast()) + [last]
+    }
+
     static func totalSets(_ day: WorkoutDay, phase: Progression.Phase) -> Int {
         day.blocks.flatMap(\.exercises).reduce(0) { $0 + SetWave.apply(Progression.apply($1, phase: phase), phase: phase).sets }
     }

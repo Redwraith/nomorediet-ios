@@ -687,3 +687,34 @@ final class ZipReaderTests: XCTestCase {
     }
 }
 
+final class MealSplitterTests: XCTestCase {
+    func testMealsNamedInOneSentence() {
+        let parts = MealSplitter.split("A colazione caffè e 2 fette biscottate, a pranzo 80 g di pasta al pesto e a cena una pizza margherita")
+        XCTAssertEqual(parts.map(\.slot), [.colazione, .pranzo, .cena])
+        XCTAssertEqual(parts[0].text, "caffè e 2 fette biscottate")
+        XCTAssertEqual(parts[1].text, "80 g di pasta al pesto")
+        XCTAssertEqual(parts[2].text, "una pizza margherita")
+    }
+
+    func testNoMealNameUsesTheTimeOfDay() {
+        XCTAssertEqual(MealSplitter.split("200 g di riso e pollo"), [.init(slot: nil, text: "200 g di riso e pollo")])
+    }
+
+    func testIntroWordsAreDropped() {
+        let parts = MealSplitter.split("Stamattina ho mangiato a colazione uno yogurt, poi a merenda una mela")
+        XCTAssertEqual(parts, [.init(slot: .colazione, text: "uno yogurt"), .init(slot: .spuntino, text: "una mela")])
+    }
+}
+
+final class LastDayExtrasTests: XCTestCase {
+    func testShortLastSessionGetsMoreExercises() {
+        let day = WorkoutDay(name: "B2", focus: "Femorali", blocks: [
+            ExerciseBlock(label: "1", restSeconds: 120, exercises: [
+                Exercise(name: "Stacco", pattern: "hinge", sets: 4, reps: "6–10", rir: "1", cue: "", stretch: ""),
+                Exercise(name: "Affondi", pattern: "lunge", sets: 4, reps: "6–10", rir: "1", cue: "", stretch: "")])])
+        let out = WorkoutPlan.withExtras([day])
+        XCTAssertEqual(out.last?.blocks.flatMap(\.exercises).count, 6)
+        XCTAssertTrue(out.last?.blocks.flatMap(\.exercises).contains { $0.name == "Hip thrust" } == true)
+    }
+}
+
