@@ -41,13 +41,30 @@ final class FoodStore {
             .filter { $0.count >= 2 }.prefix(5)
         guard isAvailable, !words.isEmpty else { return [] }
         let clause = words.map { _ in "norm LIKE ?" }.joined(separator: " AND ")
-        let sql = "SELECT \(Self.columns) FROM foods WHERE \(clause) ORDER BY length(norm) LIMIT \(limit)"
-        let args = words.map { "%\($0)%" }
+        // a wider set of candidates, ranked below: names starting with the first word first ("riso …" before "gallette di riso")
+        let sql = "SELECT \(Self.columns) FROM foods WHERE \(clause) ORDER BY (norm LIKE ?) DESC, length(norm) LIMIT \(limit * 4)"
+        let args = words.map { "%\($0)%" } + ["\(words[0])%"]
         // updated products replace the bundled copy of the same barcode
         let fresh = rows(on: \.updates, sql, args, Self.food)
         let codes = Set(fresh.compactMap(\.barcode))
         let bundled = rows(on: \.db, sql, args, Self.food).filter { $0.barcode == nil || !codes.contains($0.barcode!) }
-        return Array((fresh + bundled).sorted { $0.name.count < $1.name.count }.prefix(limit))
+        return Array(Self.rank(fresh + bundled, words: Array(words)).prefix(limit))
+    }
+
+    /// Best first: every word as a whole word, the name starting with the first word, generic foods before brands,
+    /// then the shortest name. Substring hits inside other words ("riso" in "sorriso") go last.
+    static func rank(_ foods: [Food], words: [String]) -> [Food] {
+        func score(_ food: Food) -> Double {
+            let name = FoodDatabase.normalize(food.name)
+            let tokens = name.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+            let whole = words.filter { w in tokens.contains { $0 == w || ($0.hasPrefix(w) && $0.count <= w.count + 2) } }.count
+            var s = Double(whole) / Double(max(words.count, 1)) * 4
+            if tokens.first.map({ $0.hasPrefix(words[0]) }) == true { s += 2 }
+            if food.brand == nil || food.brand?.isEmpty == true { s += 1 }
+            s -= Double(name.count) / 60
+            return s
+        }
+        return foods.map { ($0, score($0)) }.sorted { $0.1 > $1.1 }.map(\.0)
     }
 
     func product(barcode: String) -> Food? {

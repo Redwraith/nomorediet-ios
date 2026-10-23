@@ -67,6 +67,9 @@ enum MealRecognizer {
                 case .apple: raw = try await OnDeviceAI.recognize(input, corrections: corrections)
                 case .claude: raw = try await FoodAI.recognize(input, catalog: catalog(foods), corrections: corrections)
                 case .gemini: raw = try await GeminiAI.recognize(input, catalog: catalog(foods), corrections: corrections)
+                case .glm, .deepseek:
+                    guard let provider = OpenAICompatibleAI.provider(AIGuard.shared.settings.engine) else { throw FoodAI.Failure.empty }
+                    raw = try await OpenAICompatibleAI.recognize(input, catalog: catalog(foods), corrections: corrections, provider: provider)
                 }
             } catch {
                 // a typed or spoken meal never ends with nothing: when the AI fails, the offline parser takes over

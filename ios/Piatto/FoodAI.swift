@@ -46,6 +46,8 @@ enum FoodAI {
         case .apple: OnDeviceAI.isAvailable
         case .claude: hasKey
         case .gemini: GeminiAI.isReady
+        case .glm: OpenAICompatibleAI.hasKey(OpenAICompatibleAI.glm)
+        case .deepseek: OpenAICompatibleAI.hasKey(OpenAICompatibleAI.deepseek)
         }
     }
 

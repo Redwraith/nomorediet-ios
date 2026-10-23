@@ -1,5 +1,12 @@
 # Nomorediet — Novità
 
+## 4.13
+- Le tue schede: Giorno 1 panca piana manubri presa neutra, lat machine presa neutra, croci ai cavi, row singolo al cavo seduto, estensioni dietro la nuca al cavo basso, curl su panca inclinata. Giorno 2 leg press 45°, leg curl seduto, leg extension, leg curl singolo con ginocchio appoggiato, adductor e abductor. Giorno 3 chest press, pulldown al cavo alto, alzate laterali al cavo, row singolo ai cavi da terra, lat singola al cavo alto, estensioni dietro la nuca, face pull, curl al cavo singolo. Giorno 4 stacco rumeno con manubri, leg press 45° singola piedi alti, leg curl seduto e singolo, leg extension, abductor.
+- Mai più squat, affondi, hip thrust, calf raise e addominali: nelle schede del Calendario vengono sostituiti (affondi → leg press 45° singola, rematore con manubrio → row singolo al cavo seduto, pulley basso → pulldown al cavo alto, croci con manubri → croci ai cavi) o tolti, e non compaiono in "Cambia esercizio", dove le tue varianti preferite sono in cima.
+- Nuovo motore AI gratuito: GLM di Z.ai (glm-4.7-flash per testo e voce, glm-4.6v-flash per le foto). In alternativa DeepSeek (costa pochi centesimi, solo testo). Profilo → Analisi AI → "Accedi a GLM e collega la chiave".
+- Calorie più affidabili: il fabbisogno calcolato dal diario non conta i giorni segnati solo in parte e resta vicino alla stima di partenza (tra −20% e +25%), così un pranzo dimenticato non ti abbassa le calorie.
+- Ricerca nel database: prima gli alimenti che si chiamano come quello che cerchi ("riso" → riso, non gallette o "sorrisi"), poi i generici prima delle marche.
+
 ## 4.12.4
 - Riconoscimento semplice più preciso: "200 g di riso" diventa riso cotto, non gallette di riso (cottura e "bianco/intero" non contano, e vince l'alimento il cui nome inizia con quello che hai scritto).
 - "Cosa hai mangiato?": se l'AI non risponde (per esempio il modello di Apple non riesce), il pasto viene comunque riconosciuto con l'analisi semplice invece di non aggiungere niente.

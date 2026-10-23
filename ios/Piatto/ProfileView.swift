@@ -20,6 +20,8 @@ struct ProfileTab: View {
     @Environment(\.scenePhase) private var scenePhase
     /// Waiting to come back from Google / Anthropic with a key copied: it is picked up and checked by itself.
     @State private var waitingForKey: AIGuard.Engine?
+    @State private var compatibleKey = ""
+    @State private var compatibleStatus: [String: String] = [:]
 
     var body: some View {
         NavigationStack {
@@ -55,8 +57,10 @@ struct ProfileTab: View {
                 }
                 Section {
                     Picker("Motore", selection: $ai.settings.engine) {
-                        Text("Apple, sull'iPhone (gratis)").tag(AIGuard.Engine.apple)
+                        Text("GLM di Z.ai (gratis, testo e foto)").tag(AIGuard.Engine.glm)
                         Text("Gemini (gratis, chiave Google)").tag(AIGuard.Engine.gemini)
+                        Text("DeepSeek (pochi centesimi, solo testo)").tag(AIGuard.Engine.deepseek)
+                        Text("Apple, sull'iPhone (gratis)").tag(AIGuard.Engine.apple)
                         Text("Claude (chiave API)").tag(AIGuard.Engine.claude)
                     }
                     if ai.settings.engine == .apple {
@@ -87,6 +91,30 @@ struct ProfileTab: View {
                             .font(.footnote)
                         }
                         if let geminiStatus { Text(geminiStatus).font(.footnote).foregroundStyle(.secondary) }
+                    } else if let provider = OpenAICompatibleAI.provider(ai.settings.engine) {
+                        if OpenAICompatibleAI.hasKey(provider) && compatibleStatus[provider.name] != "scollegato" {
+                            Label("\(provider.name) collegato", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.accent)
+                            Button("Scollega \(provider.name)", role: .destructive) {
+                                Keychain.delete(provider.keyService); compatibleStatus[provider.name] = "scollegato"
+                            }
+                        } else {
+                            Button {
+                                waitingForKey = provider.engine
+                                UIApplication.shared.open(provider.keyPage)
+                            } label: { Label("Accedi a \(provider.name) e collega la chiave", systemImage: "person.badge.key.fill") }
+                                .accessibilityIdentifier("compatible-login")
+                            Text(provider.engine == .glm
+                                 ? "Entri su z.ai (anche con Google), premi \"Create API Key\" e copiala. Tornando qui viene collegata da sola."
+                                 : "Entri su platform.deepseek.com, crei una chiave e la copi. Tornando qui viene collegata da sola.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                            DisclosureGroup("Incolla a mano") {
+                                SecureField("Chiave \(provider.name)", text: $compatibleKey)
+                                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                Button("Collega") { connectCompatible(compatibleKey, provider) }.disabled(compatibleKey.count < 20)
+                            }
+                            .font(.footnote)
+                        }
+                        if let status = compatibleStatus[provider.name], status != "scollegato" { Text(status).font(.footnote).foregroundStyle(.secondary) }
                     } else if hasKey {
                         Label("Analisi con Claude attiva", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.accent)
                         Button("Prova la chiave") {
@@ -115,7 +143,11 @@ struct ProfileTab: View {
                     }
                     if let keyStatus, ai.settings.engine == .claude { Text(keyStatus).font(.footnote).foregroundStyle(.secondary) }
                 } header: { Text("Analisi AI") } footer: {
-                    Text(ai.settings.engine == .apple
+                    Text(ai.settings.engine == .glm
+                         ? "GLM di Z.ai è gratuito (modelli Flash, con limiti di velocità): riconosce il cibo da testo, voce e foto. La chiave si crea su z.ai e resta nel portachiavi; testo e foto vanno ai server di Z.ai."
+                         : ai.settings.engine == .deepseek
+                         ? "DeepSeek costa pochi centesimi al mese a consumo (serve una piccola ricarica sul suo sito) e capisce solo testo e voce, non le foto."
+                         : ai.settings.engine == .apple
                          ? "Il modello di Apple riconosce il cibo nella foto e stima i grammi, gratis e senza internet; i nutrienti vengono dalla tabella degli alimenti quando l'alimento c'è. È meno preciso di Claude: controlla sempre i grammi."
                          : ai.settings.engine == .gemini
                          ? "Gemini è gratuito entro i limiti giornalieri di Google, senza carta di credito. La chiave si crea con il tuo account Google su AI Studio e resta nel portachiavi dell'iPhone. Attenzione: con il livello gratuito Google può usare foto e richieste per migliorare i suoi prodotti."
@@ -222,6 +254,15 @@ struct ProfileTab: View {
         }
     }
 
+    private func connectCompatible(_ key: String, _ provider: OpenAICompatibleAI.Provider) {
+        compatibleStatus[provider.name] = "Controllo…"
+        Task {
+            let result = await OpenAICompatibleAI.connect(key: key.trimmingCharacters(in: .whitespacesAndNewlines), provider: provider)
+            compatibleStatus[provider.name] = result.message
+            if result.ok { compatibleKey = "" }
+        }
+    }
+
     /// Back from AI Studio / the Anthropic console with a key copied: recognise it and connect it.
     private func pickUpCopiedKey() {
         guard let engine = waitingForKey, UIPasteboard.general.hasStrings,
@@ -237,6 +278,11 @@ struct ProfileTab: View {
                 let result = await FoodAI.test(key: text)
                 keyStatus = result
                 if result.hasSuffix("✓") { Keychain.save(text); hasKey = true }
+            }
+        case .glm, .deepseek:
+            if let provider = OpenAICompatibleAI.provider(engine), OpenAICompatibleAI.looksLikeKey(text, for: provider) {
+                waitingForKey = nil
+                connectCompatible(text, provider)
             }
         default: break
         }

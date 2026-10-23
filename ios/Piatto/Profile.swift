@@ -277,15 +277,21 @@ enum Nutrition {
 
     /// Adaptive maintenance: average intake minus the energy in the weight change.
     /// Needs at least 10 days with food logged and 2 weeks of weights.
-    static func adaptiveTDEE(intakes: [Double], weights: [(Date, Double)]) -> Double? {
-        let logged = intakes.filter { $0 > 600 }
+    /// Maintenance from what was eaten and how the weight moved. Days logged only in part (under 60% of the
+    /// formula estimate) are left out: a forgotten lunch is not a diet, and it would make maintenance look lower
+    /// than it is. The result stays within −20% / +25% of the formula, so a gap in the diary cannot push it far.
+    static func adaptiveTDEE(intakes: [Double], weights: [(Date, Double)], formula: Double? = nil) -> Double? {
+        let minimum = formula.map { $0 * 0.6 } ?? 600
+        let logged = intakes.filter { $0 >= minimum }
         guard logged.count >= 10, weights.count >= 4,
               let first = weights.first, let last = weights.last else { return nil }
         let days = last.0.timeIntervalSince(first.0) / 86400
         guard days >= 13 else { return nil }
         let slope = trend(weights).slope // kg per day
         let avgIntake = logged.reduce(0, +) / Double(logged.count)
-        return (avgIntake - slope * 7700).rounded()
+        var tdee = avgIntake - slope * 7700
+        if let formula { tdee = min(max(tdee, formula * 0.8), formula * 1.25) }
+        return tdee.rounded()
     }
 
     /// Least-squares line through weights over time: slope in kg/day.

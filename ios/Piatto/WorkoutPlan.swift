@@ -120,53 +120,55 @@ enum WorkoutPlan {
         ]),
     ]
 
+    /// Simone's plan: his exercises (no squat, lunges, hip thrust, calf raises or ab work; cables and machines for
+    /// rows and pulldowns; dumbbell press with neutral grip or chest press first).
     static let nomoredietDays: [WorkoutDay] = [
-        WorkoutDay(name: "Giorno 1", focus: "Upper A · dorso e petto", blocks: [
+        WorkoutDay(name: "Giorno 1", focus: "Upper A · petto e dorso", blocks: [
             ExerciseBlock(label: "A", restSeconds: 90, exercises: [
-                e("Lat machine presa neutra", "pull_v", 3, "6–10", "1–2", "Tira i gomiti verso i fianchi, petto alto.", "In alto lascia salire le scapole e senti il dorsale tirare."),
-                e("Panca inclinata con manubri", "push_h", 3, "6–10", "1–2", "Scendi finché i manubri sono all'altezza del petto, 1 s di pausa in basso.", "La discesa profonda allunga il gran pettorale: non accorciarla.")]),
+                e("Panca piana manubri presa neutra", "push_h", 3, "6–10", "1–2", "Palmi uno verso l'altro, gomiti a 45°, scendi fino al petto.", "Pausa di 1 s in basso con il petto allungato."),
+                e("Lat machine presa neutra", "pull_v", 3, "6–10", "1–2", "Tira i gomiti verso i fianchi, petto alto.", "In alto lascia salire le scapole e senti il dorsale tirare.")]),
             ExerciseBlock(label: "B", restSeconds: 75, exercises: [
-                e("Rematore monolaterale al cavo", "pull_h", 3, "10–12", "1", "Un braccio alla volta, tira il gomito verso l'anca, busto fermo.", "Lascia andare il braccio in avanti e ruota leggermente il busto: il dorsale si allunga."),
-                e("Alzate laterali con manubri", "raise_l", 3, "12–20", "0–1", "Sali fino all'altezza delle spalle, mignolo non più alto del pollice.", "Parti con il braccio leggermente davanti al corpo.")]),
+                e("Croci ai cavi", "fly", 3, "12–15", "1", "Cavi all'altezza delle spalle, apri ad arco con i gomiti morbidi.", "Lascia aprire le braccia finché il petto si allunga."),
+                e("Row singolo al cavo seduto", "pull_h", 3, "10–12", "1", "Un braccio alla volta, gomito verso l'anca, busto fermo.", "In avanti lascia allungare il dorsale e ruota appena il busto.")]),
             ExerciseBlock(label: "C", restSeconds: 60, exercises: [
-                e("Estensioni tricipiti sopra la testa al cavo", "tri_oh", 3, "10–15", "1", "Gomiti vicini alla testa, braccio fermo.", "Braccio sopra la testa = capo lungo del tricipite in allungamento."),
+                e("Estensioni dietro la nuca al cavo basso", "tri_oh", 3, "12–15", "1", "Di spalle al cavo basso, corda dietro la nuca, distendi le braccia in alto.", "Braccio sopra la testa: il capo lungo del tricipite lavora allungato."),
                 e("Curl su panca inclinata", "curl", 3, "10–15", "1", "Braccia dietro il busto, sali senza portare avanti il gomito.", "Partenza a braccio disteso dietro al corpo.")]),
         ]),
         WorkoutDay(name: "Giorno 2", focus: "Lower A · quadricipiti e femorali", blocks: [
-            ExerciseBlock(label: "A", restSeconds: 90, exercises: [
-                e("Squat (goblet o bilanciere)", "squat", 3, "6–10", "1–2", "Scendi sotto il parallelo con busto stabile.", "Fermati 1 s nel punto più basso."),
-                e("Alzate laterali al cavo", "raise_l", 3, "12–20", "0–1", "Cavo dietro al corpo, sali lento fino all'altezza delle spalle.", "Parti con il braccio davanti al bacino: il deltoide lavora già allungato.")]),
+            ExerciseBlock(label: "A", restSeconds: 120, exercises: [
+                e("Leg press 45°", "squat", 3, "6–10", "1–2", "Piedi a metà pedana, scendi finché il bacino resta appoggiato.", "Discesa lenta e profonda."),
+                e("Leg curl seduto", "leg_curl", 3, "6–10", "1–2", "Busto inclinato in avanti, controlla la risalita.", "Da seduto il femorale lavora più allungato.")]),
             ExerciseBlock(label: "B", restSeconds: 75, exercises: [
-                e("Stacco rumeno", "hinge", 3, "8–10", "1–2", "Anche indietro, schiena neutra, bilanciere vicino alle gambe.", "Scendi finché senti tirare i femorali, a metà tibia circa."),
-                e("Calf raise in piedi", "calf", 3, "10–15", "0–1", "Sali sulle punte in modo controllato.", "2 s di pausa con il tallone in basso, poi mezze ripetizioni basse a fine serie.")]),
+                e("Leg extension", "leg_ext", 3, "12–15", "1", "Sali fino quasi a distendere, pausa di 1 s in alto.", "Scendi fino a ginocchio ben piegato."),
+                e("Leg curl singolo con ginocchio appoggiato", "leg_curl", 3, "10–12", "1", "Una gamba alla volta, ginocchio sul cuscino, bacino fermo.", "Lascia distendere completamente il ginocchio.")]),
             ExerciseBlock(label: "C", restSeconds: 60, exercises: [
-                e("Leg curl da seduto", "leg_curl", 3, "10–15", "1", "Busto inclinato in avanti, controlla la risalita.", "Da seduto il femorale lavora più allungato che da sdraiato."),
-                e("Alzate posteriori al cavo", "rear_fly", 3, "12–20", "0–1", "Busto inclinato, apri le braccia indietro con i gomiti morbidi.", "Lascia incrociare le braccia davanti: il deltoide posteriore parte allungato.")]),
+                e("Adductor machine", "adductor", 3, "12–15", "1", "Chiudi le gambe lentamente, 1 s di stretta.", "Apri il più possibile senza fastidio all'inguine."),
+                e("Abductor machine", "abductor", 3, "12–15", "1", "Busto leggermente in avanti per i glutei, apri lento.", "Torna piano senza far sbattere i pesi.")]),
         ]),
         WorkoutDay(name: "Giorno 3", focus: "Upper B · spalle e dorso", blocks: [
             ExerciseBlock(label: "A", restSeconds: 90, exercises: [
-                e("Lat pulldown presa larga", "pull_v", 3, "6–10", "1–2", "Porta la barra al petto alto, gomiti verso il basso e indietro.", "Braccia completamente distese in alto a ogni ripetizione."),
-                e("Lento avanti con manubri", "push_v", 3, "6–10", "1–2", "Glutei contratti, spingi dritto sopra la testa.", "Scendi fino a sotto il mento.")]),
+                e("Chest press alla macchina", "push_h", 3, "6–10", "1–2", "Maniglie all'altezza del petto, spingi senza bloccare i gomiti.", "Torna indietro finché il petto si allunga."),
+                e("Pulldown al cavo alto", "pull_v", 3, "6–10", "1–2", "Porta la barra al petto alto, gomiti verso il basso.", "Braccia distese in alto a ogni ripetizione.")]),
             ExerciseBlock(label: "B", restSeconds: 75, exercises: [
-                e("Rematore monolaterale al cavo basso", "pull_h", 3, "10–12", "1", "Cavo basso, tira verso l'anca tenendo il busto fermo.", "In avanti lascia allungare il dorsale prima di ogni ripetizione."),
-                e("Panca piana con manubri", "push_h", 3, "8–12", "1–2", "Scapole strette, scendi fino al petto.", "Breve pausa in basso.")]),
+                e("Alzate laterali al cavo", "raise_l", 3, "12–15", "0–1", "Cavo dietro al corpo, sali lento fino all'altezza delle spalle.", "Parti con il braccio davanti al bacino."),
+                e("Row singolo ai cavi da terra", "pull_h", 3, "10–12", "1", "Cavo basso, un braccio alla volta, tira verso l'anca.", "Lascia allungare il dorsale in avanti.")]),
             ExerciseBlock(label: "C", restSeconds: 60, exercises: [
-                e("Alzate laterali al cavo", "raise_l", 3, "12–20", "0–1", "Un braccio alla volta, sali lento fino all'altezza delle spalle.", "Parti con il braccio davanti al bacino."),
-                e("Push-down al cavo", "tri_push", 3, "12–15", "1", "Gomiti fermi ai fianchi.", "Risali fino a superare i 90° al gomito.")]),
+                e("Lat singola al cavo alto", "pull_v", 3, "10–12", "1", "Un braccio alla volta, gomito verso il fianco.", "In alto lascia salire la spalla."),
+                e("Estensioni dietro la nuca al cavo basso", "tri_oh", 3, "12–15", "1", "Corda dietro la nuca, gomiti vicini alla testa.", "Scendi finché il tricipite si allunga.")]),
             ExerciseBlock(label: "D", restSeconds: 60, exercises: [
-                e("Face pull al cavo", "face_pull", 3, "12–20", "1", "Corda all'altezza degli occhi, tira verso la fronte aprendo i gomiti.", "Lascia distendere le braccia in avanti a ogni ripetizione."),
-                e("Curl al cavo dietro il corpo (Bayesian)", "curl", 3, "10–15", "1", "Cavo alle spalle, gomito leggermente dietro al busto.", "Il bicipite parte allungato: è la versione più efficace del curl.")]),
+                e("Face pull al cavo", "face_pull", 3, "12–15", "1", "Corda verso la fronte aprendo i gomiti.", "Lascia distendere le braccia in avanti."),
+                e("Curl al cavo singolo in piedi", "curl", 3, "10–15", "1", "Un braccio alla volta, gomito fermo al fianco.", "Scendi fino a braccio disteso.")]),
         ]),
-        WorkoutDay(name: "Giorno 4", focus: "Lower B · glutei e polpacci", blocks: [
-            ExerciseBlock(label: "A", restSeconds: 75, exercises: [
-                e("Hip thrust", "hip_thrust", 3, "8–12", "1–2", "Mento in basso, spingi con i talloni, 1 s di stretta in alto.", "Scendi con il bacino fino quasi a terra."),
-                e("Alzate laterali al cavo", "raise_l", 3, "12–20", "0–1", "Cavo dietro al corpo, sali lento fino all'altezza delle spalle.", "Parti con il braccio davanti al bacino: il deltoide lavora già allungato.")]),
-            ExerciseBlock(label: "B", restSeconds: 90, exercises: [
-                e("Leg press piedi alti", "squat", 3, "10–12", "1–2", "Piedi in alto e larghi sulla pedana, spingi con i talloni.", "Scendi finché il bacino resta appoggiato: glutei e femorali in allungamento."),
-                e("Calf raise in piedi", "calf", 3, "10–15", "0–1", "Ritmo lento, niente rimbalzi.", "Mezze ripetizioni nella metà bassa a fine serie.")]),
+        WorkoutDay(name: "Giorno 4", focus: "Lower B · femorali e glutei", blocks: [
+            ExerciseBlock(label: "A", restSeconds: 120, exercises: [
+                e("Stacco rumeno con manubri", "hinge", 3, "6–10", "1–2", "Anche indietro, schiena neutra, manubri vicini alle gambe.", "Scendi finché senti tirare i femorali."),
+                e("Leg press 45° singola piedi alti", "squat", 3, "6–10", "1–2", "Una gamba alla volta, piede in alto sulla pedana, spingi con il tallone.", "Scendi profondo: glutei e femorali in allungamento.")]),
+            ExerciseBlock(label: "B", restSeconds: 75, exercises: [
+                e("Leg curl seduto", "leg_curl", 3, "10–12", "1", "Busto in avanti, punte verso di te.", "Lascia distendere completamente il ginocchio."),
+                e("Leg extension", "leg_ext", 3, "12–15", "1", "Schienale reclinato, sali fino quasi a distendere.", "Scendi lento.")]),
             ExerciseBlock(label: "C", restSeconds: 60, exercises: [
-                e("Leg curl da seduto", "leg_curl", 3, "10–15", "1", "Busto in avanti, punte verso di te.", "Lascia distendere completamente il ginocchio."),
-                e("Leg extension", "leg_ext", 3, "12–15", "0–1", "Schienale reclinato, sali fino quasi a distendere.", "A fine serie aggiungi mezze ripetizioni nella metà con ginocchio piegato.")]),
+                e("Leg curl singolo con ginocchio appoggiato", "leg_curl", 3, "10–12", "1", "Una gamba alla volta, bacino fermo.", "Distendi completamente in basso."),
+                e("Abductor machine", "abductor", 3, "12–15", "1", "Busto in avanti, apri lento.", "Torna piano.")]),
         ]),
     ]
 
@@ -189,11 +191,11 @@ enum WorkoutPlan {
     /// Exercises Nomorediet adds to the last session of the Calendar plan (femorali/glutei had only 4).
     static let lastDayExtras: [ExerciseBlock] = [
         ExerciseBlock(label: "3", restSeconds: 75, exercises: [
-            role(e("Hip thrust", "hip_thrust", 3, "8–12", "1–2", "Mento in basso, spingi con i talloni, 1 s di stretta in alto.", "Scendi con il bacino fino quasi a terra."), .complementare),
-            role(e("Calf raise in piedi", "calf", 3, "10–15", "0–1", "Sali sulle punte in modo controllato, niente rimbalzi.", "2 s di pausa con il tallone in basso."), .isolamento)]),
+            role(e("Leg curl singolo con ginocchio appoggiato", "leg_curl", 3, "10–12", "1", "Una gamba alla volta, ginocchio sul cuscino, bacino fermo.", "Lascia distendere completamente il ginocchio."), .isolamento),
+            role(e("Leg press 45° singola piedi alti", "squat", 3, "10–12", "1–2", "Una gamba alla volta, piede in alto, spingi con il tallone.", "Scendi profondo."), .complementare)]),
         ExerciseBlock(label: "4", restSeconds: 60, exercises: [
-            role(e("Hyperextension 45° per glutei", "hinge", 3, "12–15", "1", "Schiena tonda leggera, spingi il bacino contro il cuscino stringendo i glutei.", "Scendi finché senti tirare i femorali."), .isolamento),
-            role(e("Crunch al cavo", "core", 3, "12–15", "1", "Inginocchiato, arrotola la colonna portando i gomiti verso le ginocchia.", "In alto lascia allungare l'addome prima di ogni ripetizione."), .isolamento)]),
+            role(e("Leg extension", "leg_ext", 3, "12–15", "1", "Sali fino quasi a distendere, pausa di 1 s.", "Scendi lento."), .isolamento),
+            role(e("Adductor machine", "adductor", 3, "12–15", "1", "Chiudi lento, 1 s di stretta.", "Apri senza fastidio all'inguine."), .isolamento)]),
     ]
 
     private static func role(_ exercise: Exercise, _ role: Exercise.Role) -> Exercise {
@@ -753,6 +755,76 @@ struct MovementFigure: View {
         case "calf": [.calves]
         case "core": [.abs]
         default: []
+        }
+    }
+}
+
+/// Simone's preferences, applied to any plan (Calendar or Nomorediet) and to the swap lists:
+/// no squat, lunges, hip thrust, calf raises or ab work; rows and pulldowns on cables; his favourite variants first.
+enum Preferences {
+    private static let disliked = ["squat", "affondi", "lunge", "split squat", "bulgaro", "step-up", "hip thrust", "glute bridge",
+                                   "ponte", "calf", "polpacci", "crunch", "plank", "ab wheel", "knee raise", "leg raise", "pallof",
+                                   "addom", "sit-up", "kickback"]
+    /// Exercises dropped from a plan when nothing replaces them.
+    private static let removed = ["calf", "polpacci", "crunch", "plank", "addom", "ab wheel", "knee raise", "leg raise"]
+
+    private struct Replacement { let keys: [String]; let name: String; let pattern: String; let cue: String; let stretch: String }
+    private static let replacements: [Replacement] = [
+        .init(keys: ["affondi", "lunge", "split squat", "bulgaro", "step-up"], name: "Leg press 45° singola", pattern: "squat",
+              cue: "Una gamba alla volta, piede a metà pedana, spingi con il tallone.", stretch: "Scendi profondo e lento."),
+        .init(keys: ["hip thrust", "glute bridge", "ponte"], name: "Leg press 45° singola piedi alti", pattern: "squat",
+              cue: "Piede in alto sulla pedana, spingi con il tallone.", stretch: "Scendi profondo: glutei in allungamento."),
+        .init(keys: ["squat"], name: "Leg press 45°", pattern: "squat",
+              cue: "Piedi a metà pedana, scendi finché il bacino resta appoggiato.", stretch: "Discesa lenta e profonda."),
+        .init(keys: ["rematore manubrio", "rematore con manubrio", "rematore con bilanciere", "rematore manubri"], name: "Row singolo al cavo seduto",
+              pattern: "pull_h", cue: "Un braccio alla volta, gomito verso l'anca, busto fermo.", stretch: "In avanti lascia allungare il dorsale."),
+        .init(keys: ["pulley"], name: "Pulldown al cavo alto", pattern: "pull_v",
+              cue: "Porta la barra al petto alto, gomiti verso il basso.", stretch: "Braccia distese in alto a ogni ripetizione."),
+        .init(keys: ["croci con manubri", "croci manubri"], name: "Croci ai cavi", pattern: "fly",
+              cue: "Cavi all'altezza delle spalle, apri ad arco con i gomiti morbidi.", stretch: "Lascia aprire le braccia finché il petto si allunga."),
+    ]
+
+    /// Favourite variants, shown first in "Cambia esercizio".
+    static let favourites: [String: [String]] = [
+        "push_h": ["Panca piana manubri presa neutra", "Chest press alla macchina"],
+        "fly": ["Croci ai cavi"],
+        "pull_h": ["Row singolo al cavo seduto", "Row singolo ai cavi da terra", "Lat singola al cavo alto"],
+        "pull_v": ["Lat machine presa neutra", "Pulldown al cavo alto", "Lat singola al cavo alto"],
+        "curl": ["Curl su panca inclinata", "Curl in piedi con manubri", "Curl al cavo singolo in piedi", "Curl con bilanciere in piedi"],
+        "tri_oh": ["Estensioni dietro la nuca al cavo basso"],
+        "tri_push": ["Estensioni dietro la nuca al cavo basso"],
+        "leg_curl": ["Leg curl singolo con ginocchio appoggiato", "Leg curl seduto"],
+        "hinge": ["Stacco rumeno con manubri"],
+        "squat": ["Leg press 45°", "Leg press 45° singola"],
+        "leg_ext": ["Leg extension"],
+        "adductor": ["Adductor machine"],
+        "abductor": ["Abductor machine"],
+    ]
+
+    static func dislikes(_ name: String) -> Bool {
+        let n = name.lowercased()
+        if n.contains("leg press") { return false }
+        return disliked.contains(where: n.contains)
+    }
+
+    static func personalize(_ days: [WorkoutDay]) -> [WorkoutDay] {
+        days.map { day in
+            var day = day
+            day.blocks = day.blocks.compactMap { block in
+                var block = block
+                block.exercises = block.exercises.compactMap { exercise in
+                    var e = exercise
+                    e.busy = e.busy.filter { !dislikes($0) }
+                    let n = e.name.lowercased()
+                    if let r = replacements.first(where: { $0.keys.contains(where: n.contains) }), !n.contains("leg press") {
+                        e.name = r.name; e.pattern = r.pattern; e.cue = r.cue; e.stretch = r.stretch
+                        return e
+                    }
+                    return removed.contains(where: n.contains) ? nil : e
+                }
+                return block.exercises.isEmpty ? nil : block
+            }
+            return day
         }
     }
 }

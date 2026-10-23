@@ -73,6 +73,7 @@ final class ExerciseCatalog: ObservableObject {
         let muscles = Self.muscles(for: pattern)
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         return items.filter { item in
+            if Preferences.dislikes(item.name) { return false }
             if !q.isEmpty {
                 return item.name.lowercased().contains(q) || item.primaryMuscles.contains { Self.muscleName($0).lowercased().contains(q) }
             }

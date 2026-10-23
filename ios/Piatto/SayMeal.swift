@@ -115,6 +115,8 @@ struct SayMealCard: View {
         case .apple: return "L'AI dell'iPhone"
         case .claude: return "Claude"
         case .gemini: return "Gemini"
+        case .glm: return "GLM"
+        case .deepseek: return "DeepSeek"
         }
     }
 

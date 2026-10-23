@@ -79,7 +79,10 @@ enum Sync {
         for e in entries where e.day < DayId.today { byDay[e.day, default: 0] += e.nutrients.kcal }
         let weights = ((try? context.fetch(FetchDescriptor<WeightEntry>(predicate: #Predicate { $0.day >= from }))) ?? [])
             .map { (DayId.date($0.day), $0.kg) }.sorted { $0.0 < $1.0 }
-        ProfileStore.shared.profile.adaptiveTDEE = Nutrition.adaptiveTDEE(intakes: Array(byDay.values), weights: weights)
+        var profile = ProfileStore.shared.profile
+        profile.adaptiveTDEE = nil
+        let formula = Nutrition.maintenance(profile)
+        ProfileStore.shared.profile.adaptiveTDEE = Nutrition.adaptiveTDEE(intakes: Array(byDay.values), weights: weights, formula: formula)
     }
 
     /// Imports weights, steps and energy from Apple Health: read directly when the app has the HealthKit

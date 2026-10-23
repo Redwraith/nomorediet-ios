@@ -714,7 +714,7 @@ final class LastDayExtrasTests: XCTestCase {
                 Exercise(name: "Affondi", pattern: "lunge", sets: 4, reps: "6–10", rir: "1", cue: "", stretch: "")])])
         let out = WorkoutPlan.withExtras([day])
         XCTAssertEqual(out.last?.blocks.flatMap(\.exercises).count, 6)
-        XCTAssertTrue(out.last?.blocks.flatMap(\.exercises).contains { $0.name == "Hip thrust" } == true)
+        XCTAssertTrue(out.last?.blocks.flatMap(\.exercises).contains { $0.name == "Leg curl singolo con ginocchio appoggiato" } == true)
     }
 }
 
@@ -741,6 +741,55 @@ final class FoodMatchTests: XCTestCase {
         let food = MealRecognizer.bestMatch(for: ["riso"], in: FoodDatabase.foods)
         XCTAssertEqual(food.map { FoodDatabase.normalize($0.name).hasPrefix("riso") }, true, "trovato \(food?.name ?? "niente")")
         XCTAssertEqual(MealRecognizer.bestMatch(for: ["gallette di riso"], in: FoodDatabase.foods)?.name, "Gallette di riso")
+    }
+}
+
+final class PreferencesTests: XCTestCase {
+    func testDislikedExercisesAreReplacedOrRemoved() {
+        let day = WorkoutDay(name: "B2", focus: "", blocks: [
+            ExerciseBlock(label: "1", restSeconds: 90, exercises: [
+                Exercise(name: "AFFONDI CON MANUBRI", pattern: "lunge", sets: 4, reps: "6–10", rir: "1", cue: "", stretch: ""),
+                Exercise(name: "REMATORE MANUBRIO un braccio", pattern: "pull_h", sets: 4, reps: "6–10", rir: "1", cue: "", stretch: "")]),
+            ExerciseBlock(label: "2", restSeconds: 60, exercises: [
+                Exercise(name: "Calf raise in piedi", pattern: "calf", sets: 3, reps: "12", rir: "1", cue: "", stretch: "")])])
+        let out = Preferences.personalize([day])[0]
+        XCTAssertEqual(out.blocks.count, 1)
+        XCTAssertEqual(out.blocks[0].exercises.map(\.name), ["Leg press 45° singola", "Row singolo al cavo seduto"])
+    }
+
+    func testPlanHasNoDislikedExercises() {
+        for e in WorkoutPlan.nomoredietDays.flatMap({ $0.blocks.flatMap(\.exercises) }) {
+            XCTAssertFalse(Preferences.dislikes(e.name), e.name)
+        }
+        let swaps = ExerciseSwaps.alternatives(for: Exercise(name: "Leg press 45°", pattern: "squat", sets: 3, reps: "10", rir: "1", cue: "", stretch: ""))
+        XCTAssertFalse(swaps.contains { Preferences.dislikes($0.name) })
+    }
+}
+
+final class AlgorithmReviewTests: XCTestCase {
+    func testPartialDaysDoNotLowerMaintenance() {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let weights = (0..<15).map { (start.addingTimeInterval(Double($0) * 86400), 86.0) }  // weight stable
+        // 7 complete days at 2400 kcal, 7 days with half the meals logged
+        let intakes = Array(repeating: 2400.0, count: 7) + Array(repeating: 1100.0, count: 7) + Array(repeating: 2400.0, count: 3)
+        let tdee = Nutrition.adaptiveTDEE(intakes: intakes, weights: weights, formula: 2500)
+        XCTAssertEqual(tdee, 2400)
+    }
+
+    func testAdaptiveStaysNearTheFormula() {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let weights = (0..<15).map { (start.addingTimeInterval(Double($0) * 86400), 86.0) }
+        let tdee = Nutrition.adaptiveTDEE(intakes: Array(repeating: 1600.0, count: 14), weights: weights, formula: 2600)
+        XCTAssertEqual(tdee, 2080)  // 2600 × 0.8, not 1600
+    }
+
+    func testDatabaseRankingPrefersTheFoodNamedFirst() {
+        func f(_ name: String, _ brand: String? = nil) -> Food {
+            Food(name: name, per100: Nutrients(kcal: 100), portion: 100, portionName: "100 g", barcode: nil, brand: brand, source: .openFoodFacts)
+        }
+        let ranked = FoodStore.rank([f("Gallette di riso"), f("Sorrisi al cacao"), f("Riso basmati, cotto"), f("Riso Gallo", "Gallo")], words: ["riso"])
+        XCTAssertEqual(ranked.first?.name, "Riso basmati, cotto")
+        XCTAssertEqual(ranked.last?.name, "Sorrisi al cacao")
     }
 }
 

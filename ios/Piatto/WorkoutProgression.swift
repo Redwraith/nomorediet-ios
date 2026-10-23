@@ -272,9 +272,14 @@ enum ExerciseSwaps {
     ]
 
     static func alternatives(for exercise: Exercise) -> [Option] {
+        let favourites = (Preferences.favourites[exercise.pattern] ?? []).filter { $0 != exercise.name }
+            .map { Option(name: $0, pattern: exercise.pattern, cue: "Una delle tue varianti preferite.") }
         let fromPlan = exercise.busy.map { Option(name: $0, pattern: PlanParser.pattern(for: $0), cue: "Alternativa indicata nella tua scheda.") }
-        let generic = (options[exercise.pattern] ?? []).filter { o in o.name != exercise.name && !fromPlan.contains { $0.name.lowercased() == o.name.lowercased() } }
-        return fromPlan + generic
+        var seen = Set<String>()
+        let generic = options[exercise.pattern] ?? []
+        return (favourites + fromPlan + generic).filter { o in
+            o.name != exercise.name && !Preferences.dislikes(o.name) && seen.insert(o.name.lowercased()).inserted
+        }
     }
 
     private static func key(_ original: String, day: String) -> String { "swap.\(day).\(original)" }

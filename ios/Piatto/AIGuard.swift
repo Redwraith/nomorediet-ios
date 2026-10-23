@@ -16,7 +16,7 @@ final class AIGuard: ObservableObject {
     static let maxMonthlyBudgetCeiling = 50.0
     static let maxAttempts = 3
 
-    enum Engine: String, Codable, CaseIterable { case apple, gemini, claude }
+    enum Engine: String, Codable, CaseIterable { case apple, glm, gemini, deepseek, claude }
 
     struct Settings: Codable, Equatable {
         var enabled = true
