@@ -64,7 +64,7 @@ final class ExerciseCatalog: ObservableObject {
     func item(named name: String) -> Item? {
         if let exact = items.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { return exact }
         let n = name.lowercased()
-        guard let id = Self.italian.first(where: { key, _ in n.contains(key) })?.value else { return nil }
+        guard let id = Self.italian.first(where: { n.contains($0.0) })?.1 else { return nil }
         return items.first { $0.id == id }
     }
 
