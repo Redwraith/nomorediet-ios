@@ -1,5 +1,8 @@
 # Nomorediet — Novità
 
+## 4.12.1
+- Serie e ripetizioni come le vuoi: i primi due esercizi di ogni seduta partono da 3 serie la prima settimana e salgono di una serie a settimana fino a 5, sempre tra 6 e 10 ripetizioni; poi aumenti i kg e si riparte da 3. Tutti gli altri esercizi stanno al massimo a 3 serie e 15 ripetizioni.
+
 ## 4.12
 - Catalogo di oltre 870 esercizi (Free Exercise DB, pubblico dominio) con le illustrazioni animate di Fud AI (open source, MIT): in "Cambia esercizio" cerchi tra tutti, vedi l'animazione e le istruzioni e lo scegli per oggi. Le schede mostrano l'illustrazione animata quando l'esercizio è nel catalogo. Il catalogo si scarica la prima volta (circa 1 MB), poi funziona anche offline.
 - Oggi ancora più semplice: restano anelli, "Cosa hai mangiato?", i pasti e il peso. Il tipo di giornata (allenamento/riposo) si imposta da solo quando segni una serie; i micronutrienti escono da Oggi.

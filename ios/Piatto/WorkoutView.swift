@@ -145,7 +145,7 @@ struct WorkoutTab: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: waveSets) { _, sets in SetWave.setThisWeek(sets: sets) }
-            Text("Ogni settimana una serie in più: 3, poi 4, poi 5. Dopo la settimana da 5 aumenti i kg e ricominci da 3. Cambia da solo ogni lunedì.")
+            Text("Vale per i primi due esercizi di ogni seduta (6–10 ripetizioni): ogni settimana una serie in più, 3, poi 4, poi 5. Dopo la settimana da 5 aumenti i kg e ricominci da 3. Gli altri esercizi restano al massimo 3 serie da 15. Cambia da solo ogni lunedì.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
@@ -247,7 +247,7 @@ struct WorkoutDayView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(day.focus).font(.headline)
                     Text(phase == .deload ? Progression.title(phase) : SetWave.title).font(.subheadline).foregroundStyle(Theme.accent)
-                    Text("Le serie cambiano ogni settimana (3, 4, 5); le ripetizioni con il mese del ciclo. Dropset solo dove c'è 🔻.")
+                    Text("Primi due esercizi: 3, poi 4, poi 5 serie da 6–10 ripetizioni. Gli altri: al massimo 3 serie da 15. Dropset solo dove c'è 🔻.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .fixedSize(horizontal: false, vertical: true)

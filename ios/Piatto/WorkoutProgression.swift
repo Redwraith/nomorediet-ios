@@ -355,11 +355,28 @@ enum SetWave {
         start = Calendar.current.date(byAdding: .day, value: -7 * back, to: mondayOf(today)) ?? today
     }
 
+    /// The first two exercises of a session (the fundamentals) follow the wave, 3 → 4 → 5 sets of 6–10 reps;
+    /// every other exercise stays at 3 sets at most and 15 reps at most.
     static func apply(_ exercise: Exercise, phase: Progression.Phase, on date: Date = .now) -> Exercise {
         guard phase != .deload else { return exercise }
         var e = exercise
-        e.sets = sets(on: date)
+        if e.role == .fondamentale {
+            e.sets = sets(on: date)
+            e.reps = "6–10"
+        } else {
+            e.sets = min(e.sets, 3)
+            e.reps = capped(e.reps, at: 15)
+        }
         return e
+    }
+
+    /// "12–20" → "12–15", "20" → "15", "10–12" stays.
+    static func capped(_ reps: String, at top: Int) -> String {
+        let numbers = reps.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        guard !numbers.isEmpty, numbers.contains(where: { $0 > top }) else { return reps }
+        var out: [Int] = []
+        for n in numbers.map({ min($0, top) }) where out.last != n { out.append(n) }
+        return out.map(String.init).joined(separator: "–")
     }
 
     static var title: String {

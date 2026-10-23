@@ -718,3 +718,21 @@ final class LastDayExtrasTests: XCTestCase {
     }
 }
 
+final class SetRulesTests: XCTestCase {
+    func testFundamentalsWaveAndOthersCapped() {
+        var first = Exercise(name: "Panca", pattern: "push_h", sets: 4, reps: "8–12", rir: "1", cue: "", stretch: "")
+        first.role = .fondamentale
+        var other = Exercise(name: "Alzate", pattern: "raise_l", sets: 4, reps: "12–20", rir: "1", cue: "", stretch: "")
+        other.role = .isolamento
+        let f = SetWave.apply(first, phase: .month(1))
+        XCTAssertEqual(f.sets, SetWave.sets())
+        XCTAssertEqual(f.reps, "6–10")
+        let o = SetWave.apply(other, phase: .month(1))
+        XCTAssertEqual(o.sets, 3)
+        XCTAssertEqual(o.reps, "12–15")
+        XCTAssertEqual(SetWave.capped("20", at: 15), "15")
+        XCTAssertEqual(SetWave.capped("15–20", at: 15), "15")
+        XCTAssertEqual(SetWave.capped("10–12", at: 15), "10–12")
+    }
+}
+
