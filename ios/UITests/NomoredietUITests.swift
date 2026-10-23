@@ -22,7 +22,12 @@ final class NomoredietUITests: XCTestCase {
         guard allow.waitForExistence(timeout: timeout) || selectAll.exists else { return false }
         shot("00-permessi-salute")
         if selectAll.exists { selectAll.tap() }
-        for _ in 0..<8 where !(allow.isHittable && allow.isEnabled) { app.swipeUp() }
+        // write access (only the test's sample data) has its own switches: turn on the ones still off
+        for _ in 0..<8 {
+            for toggle in app.switches.allElementsBoundByIndex where toggle.isHittable && (toggle.value as? String) == "0" { toggle.tap() }
+            if allow.isHittable && allow.isEnabled { break }
+            app.swipeUp()
+        }
         shot("00-permessi-salute-tutti")
         if allow.isEnabled { allow.tap() }
         RunLoop.current.run(until: Date().addingTimeInterval(2))
@@ -95,7 +100,10 @@ final class NomoredietUITests: XCTestCase {
             shot("09-catalogo")
             if app.buttons["swap-close"].exists { app.buttons["swap-close"].tap() }
             else if app.buttons["Chiudi"].exists { app.buttons["Chiudi"].tap() }
-            else { app.buttons["Sheet Grabber"].swipeDown(velocity: .fast) }
+            else {
+                let grabber = app.buttons["Sheet Grabber"]
+                grabber.press(forDuration: 0.2, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+            }
             RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
         let finish = app.buttons["workout-finish"]

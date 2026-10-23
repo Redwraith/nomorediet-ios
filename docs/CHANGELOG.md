@@ -1,6 +1,7 @@
 # Nomorediet — Novità
 
-## 4.12.3
+## 4.12.4
+- Riconoscimento semplice più preciso: "200 g di riso" diventa riso cotto, non gallette di riso (cottura e "bianco/intero" non contano, e vince l'alimento il cui nome inizia con quello che hai scritto).
 - "Cosa hai mangiato?": se l'AI non risponde (per esempio il modello di Apple non riesce), il pasto viene comunque riconosciuto con l'analisi semplice invece di non aggiungere niente.
 - Profilo → Apple Salute: "Sincronizza adesso", "Importa tutto" e "Comandi rapidi" sono righe separate (prima un tocco poteva aprire la guida al posto della sincronizzazione) e quando Salute è collegata vedi i passi di oggi.
 - "Cambia esercizio" ha il pulsante Chiudi.

@@ -736,3 +736,11 @@ final class SetRulesTests: XCTestCase {
     }
 }
 
+final class FoodMatchTests: XCTestCase {
+    func testPlainRiceIsRiceNotRiceCakes() {
+        let food = MealRecognizer.bestMatch(for: ["riso"], in: FoodDatabase.foods)
+        XCTAssertEqual(food.map { FoodDatabase.normalize($0.name).hasPrefix("riso") }, true, "trovato \(food?.name ?? "niente")")
+        XCTAssertEqual(MealRecognizer.bestMatch(for: ["gallette di riso"], in: FoodDatabase.foods)?.name, "Gallette di riso")
+    }
+}
+

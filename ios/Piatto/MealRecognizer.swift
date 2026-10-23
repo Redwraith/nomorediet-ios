@@ -259,6 +259,9 @@ enum MealRecognizer {
         let text = FoodDatabase.normalize(queries.joined(separator: " "))
         let wantsRaw = text.contains("crud")
         let stop: Set<String> = ["di", "al", "alla", "allo", "con", "e", "in", "il", "la", "lo", "le", "i", "gli", "un", "una", "del", "della", "a"]
+        // how it is cooked or served does not make a food a different one: "riso" is "riso basmati cotto", not "gallette di riso"
+        let state: Set<String> = ["cotto", "cotta", "cotti", "cotte", "bollito", "bollita", "lessato", "lessata", "intero", "intera",
+                                  "fresco", "fresca", "naturale", "bianco", "bianca"]
         var best: (Food, Double)?
         for query in queries where !query.isEmpty {
             let words = FoodDatabase.normalize(query).split(whereSeparator: { !$0.isLetter }).map(String.init)
@@ -267,11 +270,15 @@ enum MealRecognizer {
             for food in foods {
                 let name = FoodDatabase.normalize(food.name)
                 if name.contains("crud") && !wantsRaw { continue }
-                let nameWords = name.split(whereSeparator: { !$0.isLetter }).map(String.init).filter { $0.count > 2 && !stop.contains($0) }
+                let allNameWords = name.split(whereSeparator: { !$0.isLetter }).map(String.init).filter { $0.count > 2 && !stop.contains($0) }
+                guard let firstName = allNameWords.first else { continue }
+                let nameWords = allNameWords.filter { !state.contains($0) || words.contains($0) }
                 guard !nameWords.isEmpty else { continue }
-                let covered = Double(words.filter { w in nameWords.contains { same($0, w) } }.count) / Double(words.count)
+                let covered = Double(words.filter { w in allNameWords.contains { same($0, w) } }.count) / Double(words.count)
                 let precision = Double(nameWords.filter { n in words.contains { same($0, n) } }.count) / Double(nameWords.count)
-                let score = covered * 0.6 + precision * 0.4
+                // the food the name starts with ("riso …") beats one that only contains it ("gallette di riso")
+                let head = same(firstName, words[0]) ? 0.15 : 0
+                let score = covered * 0.6 + precision * 0.4 + head
                 if score >= 0.6, score > (best?.1 ?? 0) { best = (food, score) }
             }
         }
