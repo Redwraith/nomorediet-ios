@@ -1,6 +1,7 @@
 # Nomorediet — Novità
 
-## 4.12.2
+## 4.12.3
+- "Cosa hai mangiato?": se l'AI non risponde (per esempio il modello di Apple non riesce), il pasto viene comunque riconosciuto con l'analisi semplice invece di non aggiungere niente.
 - Profilo → Apple Salute: "Sincronizza adesso", "Importa tutto" e "Comandi rapidi" sono righe separate (prima un tocco poteva aprire la guida al posto della sincronizzazione) e quando Salute è collegata vedi i passi di oggi.
 - "Cambia esercizio" ha il pulsante Chiudi.
 

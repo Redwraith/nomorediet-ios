@@ -62,10 +62,19 @@ enum MealRecognizer {
         let raw: (dish: String, items: [Raw], note: String)
         aiScaleGrams = 0
         if FoodAI.isReady {
-            switch AIGuard.shared.settings.engine {
-            case .apple: raw = try await OnDeviceAI.recognize(input, corrections: corrections)
-            case .claude: raw = try await FoodAI.recognize(input, catalog: catalog(foods), corrections: corrections)
-            case .gemini: raw = try await GeminiAI.recognize(input, catalog: catalog(foods), corrections: corrections)
+            do {
+                switch AIGuard.shared.settings.engine {
+                case .apple: raw = try await OnDeviceAI.recognize(input, corrections: corrections)
+                case .claude: raw = try await FoodAI.recognize(input, catalog: catalog(foods), corrections: corrections)
+                case .gemini: raw = try await GeminiAI.recognize(input, catalog: catalog(foods), corrections: corrections)
+                }
+            } catch {
+                // a typed or spoken meal never ends with nothing: when the AI fails, the offline parser takes over
+                guard input.image == nil, !input.text.isEmpty else { throw error }
+                let parsed = TextMealParser.parse(input.text)
+                guard !parsed.isEmpty else { throw error }
+                DebugLog.shared.add("error", "ai", "AI non riuscita, uso l'analisi semplice: \(error.localizedDescription)")
+                raw = ("Pasto", parsed, "L'AI non ha risposto: analisi semplice, controlla alimenti e grammi.")
             }
         } else if input.image != nil, input.text.isEmpty, let dish = guesses.first(where: { $0.confidence >= 0.3 }) {
             // offline: the on-device recogniser's best dish, at its standard portion

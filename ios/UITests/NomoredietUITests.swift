@@ -93,7 +93,9 @@ final class NomoredietUITests: XCTestCase {
             app.swipeUp(); app.swipeUp()
             RunLoop.current.run(until: Date().addingTimeInterval(4))
             shot("09-catalogo")
-            app.buttons["swap-close"].tap()
+            if app.buttons["swap-close"].exists { app.buttons["swap-close"].tap() }
+            else if app.buttons["Chiudi"].exists { app.buttons["Chiudi"].tap() }
+            else { app.buttons["Sheet Grabber"].swipeDown(velocity: .fast) }
             RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
         let finish = app.buttons["workout-finish"]
@@ -125,6 +127,7 @@ final class NomoredietUITests: XCTestCase {
         app.open(URL(string: "nomorediet://debug")!)
         RunLoop.current.run(until: Date().addingTimeInterval(2))
         shot("19-debug")
+        for i in 0..<4 { app.swipeUp(); shot("19-debug-\(i + 1)") }
     }
 
     func test4_Coach_e_Profilo() {

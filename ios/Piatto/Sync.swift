@@ -102,6 +102,8 @@ enum Sync {
                 return
             }
             guard result["weights"] is [[String: Any]] else { return }
+            let steps = (result["daily"] as? [String: [String: Double]])?["steps"] ?? [:]
+            DebugLog.shared.add("info", "health", "Salute letta: passi su \(steps.count) giorni, oggi \(Int(steps[DayId.today] ?? 0)), pesate \((result["weights"] as? [[String: Any]])?.count ?? 0)")
             HealthCache.shared.status = "Collegata ✓"
             applyHealth(result, context: context)
         }
