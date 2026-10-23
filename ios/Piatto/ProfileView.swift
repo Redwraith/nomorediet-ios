@@ -381,20 +381,24 @@ private struct HealthStatusRow: View {
 
     private var connected: Bool { cache.status?.hasPrefix("Collegata") == true }
 
+    /// Separate rows: buttons and links sharing one Form row all fire together on a tap.
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(cache.status ?? "Non ancora letta")
-                .font(.footnote)
-                .foregroundStyle(connected ? Theme.accent : .orange)
-            if !connected {
-                Button("Collega Apple Salute") { connect() }.font(.footnote.weight(.semibold))
-            } else {
-                Button("Sincronizza adesso") { connect() }.font(.footnote.weight(.semibold))
+        Group {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(cache.status ?? "Non ancora letta")
+                    .font(.footnote)
+                    .foregroundStyle(connected ? Theme.accent : .orange)
+                if let steps = cache.steps, connected {
+                    Text("Oggi \(Int(steps).formatted()) passi").font(.footnote).foregroundStyle(.secondary)
+                }
+                if cache.status?.contains("entitlement") == true || cache.status?.contains("Comandi rapidi") == true {
+                    Text("Per collegare Salute direttamente (passi e peso in automatico), installa Nomorediet con Impactor dal PC invece che con SideStore: mantiene il permesso di Salute anche con l'Apple ID gratuito. Poi qui premi \"Collega Apple Salute\" e scegli cosa condividere.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
-            if cache.status?.contains("entitlement") == true || HealthCache.shared.status?.contains("Comandi rapidi") == true {
-                Text("Per collegare Salute direttamente (passi e peso in automatico), installa Nomorediet con Impactor dal PC invece che con SideStore: mantiene il permesso di Salute anche con l'Apple ID gratuito. Poi qui premi \"Collega Apple Salute\" e scegli cosa condividere.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+            Button(connected ? "Sincronizza adesso" : "Collega Apple Salute") { connect() }
+                .font(.footnote.weight(.semibold))
+                .accessibilityIdentifier("health-connect")
             NavigationLink { HealthExportImportView() } label: {
                 Text("Importa tutto da Salute (anche lo storico)").font(.footnote.weight(.semibold))
             }

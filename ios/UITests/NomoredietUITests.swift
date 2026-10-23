@@ -66,7 +66,9 @@ final class NomoredietUITests: XCTestCase {
         let field = app.textFields["say-meal-text"].exists ? app.textFields["say-meal-text"] : app.textViews["say-meal-text"]
         XCTAssertTrue(field.waitForExistence(timeout: 5), "manca il campo Cosa hai mangiato")
         field.tap()
-        field.typeText("a pranzo 200 g di riso e a cena 2 uova")
+        if !(field.value(forKey: "hasKeyboardFocus") as? Bool ?? false) { field.tap() }
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        app.typeText("a pranzo 200 g di riso e a cena 2 uova")
         shot("02-oggi-testo")
         app.buttons["say-meal-send"].tap()
         let added = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Aggiunto'")).firstMatch
@@ -91,7 +93,8 @@ final class NomoredietUITests: XCTestCase {
             app.swipeUp(); app.swipeUp()
             RunLoop.current.run(until: Date().addingTimeInterval(4))
             shot("09-catalogo")
-            app.swipeDown(velocity: .fast)
+            app.buttons["swap-close"].tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
         let finish = app.buttons["workout-finish"]
         for _ in 0..<12 where !finish.isHittable { app.swipeUp() }
@@ -103,11 +106,12 @@ final class NomoredietUITests: XCTestCase {
 
     func test3_Salute_passi() {
         tab("tab-profilo", "Profilo")
-        let connect = app.buttons["Collega Apple Salute"]
-        for _ in 0..<10 where !connect.exists && !app.buttons["Sincronizza adesso"].exists { app.swipeUp() }
+        let connect = app.buttons["health-connect"]
+        for _ in 0..<10 where !connect.isHittable { app.swipeUp() }
         shot("11-profilo-salute")
-        if connect.exists { connect.tap() } else if app.buttons["Sincronizza adesso"].exists { app.buttons["Sincronizza adesso"].tap() }
+        connect.tap()
         grantHealthIfAsked(timeout: 10)
+        RunLoop.current.run(until: Date().addingTimeInterval(4))
         let connected = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Collegata'")).firstMatch
         XCTAssertTrue(connected.waitForExistence(timeout: 30), "Salute non risulta collegata")
         shot("13-salute-collegata")
@@ -116,8 +120,11 @@ final class NomoredietUITests: XCTestCase {
         shot("14-progressi")
         app.swipeUp()
         shot("15-progressi-passi")
-        let steps = app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'passi'")).firstMatch
-        XCTAssertTrue(steps.exists, "nessun dato sui passi in Progressi")
+        let empty = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Collega Apple Salute'")).firstMatch
+        XCTAssertFalse(empty.exists, "il grafico dei passi è vuoto")
+        app.open(URL(string: "nomorediet://debug")!)
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        shot("19-debug")
     }
 
     func test4_Coach_e_Profilo() {
@@ -144,7 +151,8 @@ final class NomoredietUITests: XCTestCase {
                 shot(String(format: "%02d-scheda%d-%d", 22 + i * 4 + part, i + 1, part + 1))
                 app.swipeUp()
             }
-            app.navigationBars.buttons.element(boundBy: 0).tap()
+            let back = app.navigationBars.buttons.matching(NSPredicate(format: "label == 'Allenamento' OR label == 'Back' OR label == 'Indietro'")).firstMatch
+            if back.exists { back.tap() } else { app.swipeRight() }
             RunLoop.current.run(until: Date().addingTimeInterval(1))
             app.buttons["workout-next"].tap()
         }

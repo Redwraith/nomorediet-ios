@@ -41,7 +41,10 @@ enum HealthBridge {
             if UITestSupport.seedHealth && !UITestSupport.seeded {
                 UITestSupport.seeded = true
                 let samples = UITestSupport.healthSamples(steps: steps, mass: mass)
-                return store.save(samples) { _, _ in fetch(days: days, completion: completion) }
+                return store.save(samples) { ok, error in
+                    DebugLog.shared.add(ok ? "info" : "error", "health", "Dati di prova scritti in Salute: \(ok) \(error?.localizedDescription ?? "")")
+                    fetch(days: days, completion: completion)
+                }
             }
             #endif
             let cal = Calendar.current

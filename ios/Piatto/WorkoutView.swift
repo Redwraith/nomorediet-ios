@@ -693,6 +693,7 @@ struct SwapSheet: View {
     var original: Exercise
     var current: Exercise
     var pick: (ExerciseSwaps.Option?) -> Void
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
@@ -721,6 +722,7 @@ struct SwapSheet: View {
             }
             .navigationTitle("Al posto di \(original.name)")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() }.accessibilityIdentifier("swap-close") } }
         }
     }
 }

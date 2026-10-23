@@ -1,5 +1,9 @@
 # Nomorediet — Novità
 
+## 4.12.2
+- Profilo → Apple Salute: "Sincronizza adesso", "Importa tutto" e "Comandi rapidi" sono righe separate (prima un tocco poteva aprire la guida al posto della sincronizzazione) e quando Salute è collegata vedi i passi di oggi.
+- "Cambia esercizio" ha il pulsante Chiudi.
+
 ## 4.12.1
 - Serie e ripetizioni come le vuoi: i primi due esercizi di ogni seduta partono da 3 serie la prima settimana e salgono di una serie a settimana fino a 5, sempre tra 6 e 10 ripetizioni; poi aumenti i kg e si riparte da 3. Tutti gli altri esercizi stanno al massimo a 3 serie e 15 ripetizioni.
 
