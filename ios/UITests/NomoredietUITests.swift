@@ -10,6 +10,23 @@ final class NomoredietUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments += ["-uiTesting", "-seedHealth", "-AppleLanguages", "(it)", "-AppleLocale", "it_IT"]
         app.launch()
+        grantHealthIfAsked()
+    }
+
+    /// The Health permission sheet (it can appear at launch): select every topic, then Allow.
+    @discardableResult
+    private func grantHealthIfAsked(timeout: TimeInterval = 6) -> Bool {
+        let allow = app.buttons["UIA.Health.Allow.Button"]
+        let selectAll = app.buttons.matching(NSPredicate(format:
+            "label BEGINSWITH 'Select All' OR label BEGINSWITH 'Seleziona tutt' OR label BEGINSWITH 'Turn On All' OR label BEGINSWITH 'Attiva tutt'")).firstMatch
+        guard allow.waitForExistence(timeout: timeout) || selectAll.exists else { return false }
+        shot("00-permessi-salute")
+        if selectAll.exists { selectAll.tap() }
+        for _ in 0..<8 where !(allow.isHittable && allow.isEnabled) { app.swipeUp() }
+        shot("00-permessi-salute-tutti")
+        if allow.isEnabled { allow.tap() }
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        return true
     }
 
     private func shot(_ name: String) {
@@ -89,12 +106,8 @@ final class NomoredietUITests: XCTestCase {
         let connect = app.buttons["Collega Apple Salute"]
         for _ in 0..<10 where !connect.exists && !app.buttons["Sincronizza adesso"].exists { app.swipeUp() }
         shot("11-profilo-salute")
-        if connect.exists { connect.tap() } else { app.buttons["Sincronizza adesso"].tap() }
-        // the Health permission sheet: turn on everything, then allow
-        if tapAny(["Turn On All", "Attiva tutto", "Turn On All Categories", "Attiva tutte le categorie"], timeout: 15) {
-            shot("12-permessi-salute")
-            tapAny(["Allow", "Consenti"], timeout: 8)
-        }
+        if connect.exists { connect.tap() } else if app.buttons["Sincronizza adesso"].exists { app.buttons["Sincronizza adesso"].tap() }
+        grantHealthIfAsked(timeout: 10)
         let connected = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Collegata'")).firstMatch
         XCTAssertTrue(connected.waitForExistence(timeout: 30), "Salute non risulta collegata")
         shot("13-salute-collegata")
