@@ -349,7 +349,7 @@ final class WorkoutTests: XCTestCase {
     }
 
     func testEveryPlanExerciseHasAlternatives() {
-        for exercise in (WorkoutPlan.nomoredietDays + PlanStore.shared.calendarDays).flatMap({ $0.blocks.flatMap(\.exercises) }) {
+        for exercise in Preferences.personalize(WorkoutPlan.nomoredietDays + PlanStore.shared.calendarDays).flatMap({ $0.blocks.flatMap(\.exercises) }) {
             XCTAssertFalse(ExerciseSwaps.alternatives(for: exercise).isEmpty, exercise.name)
         }
     }
