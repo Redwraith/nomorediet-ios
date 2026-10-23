@@ -22,12 +22,8 @@ final class NomoredietUITests: XCTestCase {
         guard allow.waitForExistence(timeout: timeout) || selectAll.exists else { return false }
         shot("00-permessi-salute")
         if selectAll.exists { selectAll.tap() }
-        // write access (only the test's sample data) has its own switches: turn on the ones still off
-        for _ in 0..<8 {
-            for toggle in app.switches.allElementsBoundByIndex where toggle.isHittable && (toggle.value as? String) == "0" { toggle.tap() }
-            if allow.isHittable && allow.isEnabled { break }
-            app.swipeUp()
-        }
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        for _ in 0..<8 where !(allow.isHittable && allow.isEnabled) { app.swipeUp() }
         shot("00-permessi-salute-tutti")
         if allow.isEnabled { allow.tap() }
         RunLoop.current.run(until: Date().addingTimeInterval(2))

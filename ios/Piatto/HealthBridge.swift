@@ -43,6 +43,8 @@ enum HealthBridge {
                 let samples = UITestSupport.healthSamples(steps: steps, mass: mass)
                 return store.save(samples) { ok, error in
                     DebugLog.shared.add(ok ? "info" : "error", "health", "Dati di prova scritti in Salute: \(ok) \(error?.localizedDescription ?? "")")
+                    // asked before the permission sheet was answered: try again on the next read
+                    if !ok { UITestSupport.seeded = false }
                     fetch(days: days, completion: completion)
                 }
             }
