@@ -9,6 +9,12 @@ struct PiattoApp: App {
     @StateObject private var app = AppState()
     @StateObject private var store = ProfileStore.shared
 
+    init() {
+        #if DEBUG
+        UITestSupport.apply()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

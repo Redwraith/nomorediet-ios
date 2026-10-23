@@ -16,8 +16,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios
         PRODUCT_NAME: Nomorediet
-        MARKETING_VERSION: "4.11"
-        CURRENT_PROJECT_VERSION: "42"
+        MARKETING_VERSION: "4.12"
+        CURRENT_PROJECT_VERSION: "43"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -56,7 +56,7 @@ targets:
         NSHealthShareUsageDescription: Nomorediet legge da Salute (iPhone e Apple Watch) passi, distanza, calorie attive e a riposo, minuti di esercizio, battito, HRV, VO2 max, sonno, peso, grasso corporeo e allenamenti, per calcolare le tue calorie e il piano.
         NSCalendarsFullAccessUsageDescription: Nomorediet legge dal Calendario la scheda di allenamento che segui (per esempio gli eventi del tuo Google Calendar) per mostrarla nell'app.
         NSMotionUsageDescription: Nomorediet usa i sensori di movimento dell'iPhone per contare le ripetizioni quando lo scegli tu.
-        NSHealthUpdateUsageDescription: Nomorediet non scrive dati in Salute.
+        NSHealthUpdateUsageDescription: Nomorediet non scrive dati in Salute (solo i test automatici sul simulatore aggiungono dati di prova).
         NSMicrophoneUsageDescription: Nomorediet usa il microfono solo mentre tieni premuto il pulsante per parlare.
     scheme:
       testTargets: [NomoredietTests]
@@ -68,8 +68,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios.widgets
         PRODUCT_NAME: NomoredietWidgets
-        MARKETING_VERSION: "4.11"
-        CURRENT_PROJECT_VERSION: "42"
+        MARKETING_VERSION: "4.12"
+        CURRENT_PROJECT_VERSION: "43"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         CODE_SIGN_ENTITLEMENTS: Widgets/Widgets.entitlements
@@ -82,6 +82,18 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  NomoredietUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Piatto
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios.uitests
+        TEST_TARGET_NAME: Piatto
+        SWIFT_VERSION: "5.0"
   NomoredietTests:
     type: bundle.unit-test
     platform: iOS
@@ -96,3 +108,13 @@ targets:
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/Nomorediet.app/Nomorediet
         BUNDLE_LOADER: $(TEST_HOST)
         SWIFT_VERSION: "5.0"
+schemes:
+  NomoredietUI:
+    build:
+      targets:
+        Piatto: all
+        NomoredietUITests: [test]
+    test:
+      config: Debug
+      targets: [NomoredietUITests]
+

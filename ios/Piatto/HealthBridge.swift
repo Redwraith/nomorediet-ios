@@ -26,12 +26,24 @@ enum HealthBridge {
         let fat = HKQuantityType(.bodyFatPercentage)
         let workouts = HKObjectType.workoutType()
         let read: Set<HKObjectType> = [mass, steps, energy, sleep, hrv, rhr, basal, distance, exercise, flights, heart, vo2, fat, workouts]
-        store.requestAuthorization(toShare: [], read: read) { ok, error in
+        var share: Set<HKSampleType> = []
+        #if DEBUG
+        if UITestSupport.seedHealth { share = [steps, mass] }
+        #endif
+        store.requestAuthorization(toShare: share, read: read) { ok, error in
             guard ok, error == nil else {
                 // the reason is shown in Profilo: e.g. a missing HealthKit entitlement after re-signing
                 let reason = error?.localizedDescription ?? "accesso non concesso"
                 return DispatchQueue.main.async { completion(["available": true, "authorized": false, "error": reason]) }
             }
+            #if DEBUG
+            // simulator UI tests: a week of steps and two weighings, written once, then read back like real data
+            if UITestSupport.seedHealth && !UITestSupport.seeded {
+                UITestSupport.seeded = true
+                let samples = UITestSupport.healthSamples(steps: steps, mass: mass)
+                return store.save(samples) { _, _ in fetch(days: days, completion: completion) }
+            }
+            #endif
             let cal = Calendar.current
             let start = cal.date(byAdding: .day, value: -days, to: cal.startOfDay(for: Date()))!
             let predicate = HKQuery.predicateForSamples(withStart: start, end: Date())

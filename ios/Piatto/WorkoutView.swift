@@ -75,6 +75,7 @@ struct WorkoutTab: View {
             .navigationTitle("Allenamento")
             .navigationDestination(for: WorkoutDay.self) { WorkoutDayView(day: $0) }
             .onAppear(perform: openIfAsked)
+            .task { await ExerciseCatalog.shared.loadIfNeeded() }
             .onChange(of: app.openWorkout) { _, _ in openIfAsked() }
             .sheet(isPresented: $showTimer) { TimerSheet().presentationDetents([.medium]) }
             .sheet(isPresented: $showHistory) { SetHistoryView() }
@@ -378,12 +379,22 @@ struct ExerciseCard: View {
     @State private var editing: SetLog?
     @State private var deleting: SetLog?
     @AppStorage("rest.extra") private var restExtra = 0
+    @ObservedObject private var catalog = ExerciseCatalog.shared
 
     private var logs: [SetLog] { allLogs.filter { $0.exercise == exercise.name }.sorted { $0.createdAt < $1.createdAt } }
     private var today: [SetLog] { logs.filter { $0.day == DayId.today } }
     private var lastSession: [SetLog] {
         guard let lastDay = logs.last(where: { $0.day != DayId.today })?.day else { return [] }
         return logs.filter { $0.day == lastDay }
+    }
+
+    /// The illustrated animation from the exercise catalog when there is one, else the stick figure.
+    @ViewBuilder private var exerciseFigure: some View {
+        if let item = catalog.item(named: exercise.name) {
+            CatalogFigure(id: item.id, pattern: exercise.pattern, size: 96)
+        } else {
+            MovementFigure(pattern: exercise.pattern, size: 96)
+        }
     }
 
     /// Set wave: same load while the sets go 3 → 4 → 5, more weight when a new wave starts at 3 sets.
@@ -396,7 +407,7 @@ struct ExerciseCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
-                MovementFigure(pattern: exercise.pattern, size: 96)
+                exerciseFigure
                     .background(Theme.background, in: RoundedRectangle(cornerRadius: 14))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 4) {
@@ -706,6 +717,7 @@ struct SwapSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
+                CatalogSwapSection(pattern: original.pattern) { pick($0) }
             }
             .navigationTitle("Al posto di \(original.name)")
             .navigationBarTitleDisplayMode(.inline)

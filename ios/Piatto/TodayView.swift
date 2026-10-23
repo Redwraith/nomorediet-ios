@@ -43,11 +43,9 @@ struct TodayView: View {
                 VStack(spacing: 18) {
                     daySwitcher
                     RingsCard(totals: totals, goals: goals, big: store.profile.simpleMode)
-                    dayKindPicker
                     if app.day == DayId.today { SupplementsCard() }
                     SayMealCard()
                     ForEach(MealSlot.allCases) { slot in mealSection(slot) }
-                    if !store.profile.simpleMode { MicronutrientsCard(totals: totals, goals: goals, vegetarian: store.profile.vegetarian) }
                     weightRow
                 }
                 .padding(.horizontal, 16)

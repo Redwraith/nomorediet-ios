@@ -282,6 +282,9 @@ enum ExerciseSwaps {
     /// The exercise done instead of `original` on `day`, if any.
     static func swap(for original: String, day: String = DayId.today) -> Option? {
         guard let name = UserDefaults.standard.string(forKey: key(original, day: day)) else { return nil }
+        if let item = ExerciseCatalog.shared.item(named: name), item.name == name {
+            return Option(name: name, pattern: ExerciseCatalog.pattern(for: item), cue: item.instructions.first ?? "")
+        }
         return options.values.joined().first { $0.name == name }
             ?? Option(name: name, pattern: PlanParser.pattern(for: name), cue: "Alternativa indicata nella tua scheda.")
     }

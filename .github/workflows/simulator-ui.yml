@@ -1,0 +1,90 @@
+name: Simulator UI test (iOS 27)
+
+# Every screen of Nomorediet on an iPhone simulator, Apple Health connected with all permissions and seeded
+# steps; screenshots published to the "ui-test" release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ui:
+    runs-on: xcode-27
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Food database (optional)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p Piatto/Data
+          gh release download food-db -p foods.sqlite.gz -D Piatto/Data --clobber && gunzip -f Piatto/Data/foods.sqlite.gz || true
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick an iPhone simulator with the newest iOS
+        id: sim
+        run: |
+          xcrun simctl list runtimes
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in sorted(d.items(), reverse=True) if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          echo "udid=$DEVICE" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl list devices | grep "$DEVICE"
+
+      - name: Run the UI tests (ad-hoc signed so HealthKit works on the simulator)
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Piatto.xcodeproj -scheme NomoredietUI \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build-ui -resultBundlePath ui.xcresult \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" PROVISIONING_PROFILE_SPECIFIER="" \
+            | tail -n 150
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          mkdir -p shots
+          xcrun xcresulttool export attachments --path ui.xcresult --output-path shots || true
+          python3 - <<'PY'
+          import json, os, shutil
+          base = "shots"
+          manifest = os.path.join(base, "manifest.json")
+          if os.path.exists(manifest):
+              for test in json.load(open(manifest)):
+                  for a in test.get("attachments", []):
+                      src = os.path.join(base, a["exportedFileName"])
+                      name = (a.get("suggestedHumanReadableName") or a["exportedFileName"]).split("_")[0]
+                      if os.path.exists(src) and src.endswith(".png"):
+                          shutil.copy(src, os.path.join(base, name if name.endswith(".png") else name + ".png"))
+          PY
+          ls -la shots
+          xcrun xcresulttool get test-results summary --path ui.xcresult > summary.json || true
+          cat summary.json || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test
+          path: |
+            ios/shots
+            ios/summary.json
+
+      - name: Publish to the "ui-test" release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ui-test >/dev/null 2>&1 || gh release create ui-test --prerelease --title "Test sul simulatore" --notes "Screenshot dei test automatici."
+          for f in $(gh release view ui-test --json assets -q '.assets[].name'); do gh release delete-asset ui-test "$f" -y; done
+          ls shots/[0-9][0-9]-*.png >/dev/null 2>&1 && gh release upload ui-test shots/[0-9][0-9]-*.png --clobber
+          [ -f summary.json ] && gh release upload ui-test summary.json --clobber || true

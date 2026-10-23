@@ -1,5 +1,10 @@
 # Nomorediet — Novità
 
+## 4.12
+- Catalogo di oltre 870 esercizi (Free Exercise DB, pubblico dominio) con le illustrazioni animate di Fud AI (open source, MIT): in "Cambia esercizio" cerchi tra tutti, vedi l'animazione e le istruzioni e lo scegli per oggi. Le schede mostrano l'illustrazione animata quando l'esercizio è nel catalogo. Il catalogo si scarica la prima volta (circa 1 MB), poi funziona anche offline.
+- Oggi ancora più semplice: restano anelli, "Cosa hai mangiato?", i pasti e il peso. Il tipo di giornata (allenamento/riposo) si imposta da solo quando segni una serie; i micronutrienti escono da Oggi.
+- Test automatici su simulatore iPhone con iOS 27 che attraversano tutte le schermate e collegano Salute con tutti i permessi.
+
 ## 4.11
 - Oggi più semplice: scrivi o tieni premuto e di' cosa hai mangiato ("a colazione caffè e 2 fette biscottate, a pranzo 80 g di pasta al pesto"). L'AI che hai scelto in Profilo (Claude, Gemini o quella dell'iPhone) riconosce alimenti e grammi e mette ogni cosa nel pasto giusto; se non dici il pasto, usa quello dell'ora. Un tocco annulla l'inserimento, toccando una voce correggi i grammi.
 - Ultima seduta della scheda del Calendario (femorali e glutei) con 4 esercizi in più: hip thrust, calf in piedi, hyperextension per glutei e crunch al cavo.
