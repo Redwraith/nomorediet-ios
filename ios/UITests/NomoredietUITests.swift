@@ -102,7 +102,8 @@ final class NomoredietUITests: XCTestCase {
             else if app.buttons["Chiudi"].exists { app.buttons["Chiudi"].tap() }
             else {
                 let grabber = app.buttons["Sheet Grabber"]
-                grabber.press(forDuration: 0.2, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+                grabber.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                    .press(forDuration: 0.2, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
             }
             RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
