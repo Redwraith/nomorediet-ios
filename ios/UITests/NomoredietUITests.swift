@@ -66,10 +66,11 @@ final class NomoredietUITests: XCTestCase {
         shot("01-oggi")
         let field = app.textFields["say-meal-text"].exists ? app.textFields["say-meal-text"] : app.textViews["say-meal-text"]
         XCTAssertTrue(field.waitForExistence(timeout: 5), "manca il campo Cosa hai mangiato")
-        field.tap()
-        if !(field.value(forKey: "hasKeyboardFocus") as? Bool ?? false) { field.tap() }
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        app.typeText("a pranzo 200 g di riso e a cena 2 uova")
+        for _ in 0..<3 where !app.keyboards.firstMatch.exists {
+            field.tap()
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 3)
+        }
+        field.typeText("a pranzo 200 g di riso e a cena 2 uova")
         shot("02-oggi-testo")
         app.buttons["say-meal-send"].tap()
         let added = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Aggiunto'")).firstMatch
