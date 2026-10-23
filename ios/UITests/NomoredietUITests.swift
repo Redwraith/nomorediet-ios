@@ -30,7 +30,8 @@ final class NomoredietUITests: XCTestCase {
         let deadline = Date().addingTimeInterval(timeout)
         repeat {
             for label in labels {
-                for scope in [root ?? app, app] {
+                let scopes: [XCUIElement] = [root ?? app, app]
+                for scope in scopes {
                     let b = scope.buttons[label]
                     if b.exists && b.isHittable { b.tap(); return true }
                     let s = scope.switches[label]
@@ -114,4 +115,26 @@ final class NomoredietUITests: XCTestCase {
         app.swipeUp()
         shot("18-profilo-ai")
     }
+
+    /// Every session of the plan, top and bottom, so the plan can be seen as it is in the app.
+    func test5_Schede() {
+        tab("tab-allenamento", "Allenamento")
+        XCTAssertTrue(app.buttons["workout-start"].waitForExistence(timeout: 5))
+        shot("20-schede-elenco")
+        app.swipeUp()
+        shot("21-schede-elenco-2")
+        app.swipeDown(); app.swipeDown()
+        for i in 0..<4 {
+            app.buttons["workout-start"].tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(3))
+            for part in 0..<4 {
+                shot(String(format: "%02d-scheda%d-%d", 22 + i * 4 + part, i + 1, part + 1))
+                app.swipeUp()
+            }
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+            app.buttons["workout-next"].tap()
+        }
+    }
 }
+
