@@ -6,7 +6,12 @@ import VisionKit
 /// Packaged foods from Open Food Facts (free, no account): barcode lookup and text search.
 enum OpenFoodFacts {
     private struct ProductResponse: Decodable { let product: Product? }
-    private struct SearchResponse: Decodable { let products: [Product]? }
+    private struct SearchResponse: Decodable { let products: [Lossy]? }
+    /// One product that does not decode (a field of an unexpected type) must not drop the whole page.
+    private struct Lossy: Decodable {
+        let product: Product?
+        init(from decoder: Decoder) throws { product = try? Product(from: decoder) }
+    }
     private struct Product: Decodable {
         let code: String?
         let product_name: String?
@@ -60,11 +65,21 @@ enum OpenFoodFacts {
         c.queryItems = [URLQueryItem(name: "countries_tags_en", value: "italy"), URLQueryItem(name: "sort_by", value: "last_modified_t"),
                         URLQueryItem(name: "page_size", value: "100"), URLQueryItem(name: "page", value: String(page)),
                         URLQueryItem(name: "fields", value: "code,product_name,product_name_it,brands,serving_quantity,nutriments,last_modified_t")]
-        let (data, _) = try await session.data(from: c.url!)
-        let products = try JSONDecoder().decode(SearchResponse.self, from: data).products ?? []
+        let (data, response) = try await session.data(from: c.url!)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200, let decoded = try? JSONDecoder().decode(SearchResponse.self, from: data) else {
+            let start = String(data: data.prefix(120), encoding: .utf8)?.replacingOccurrences(of: "\n", with: " ") ?? ""
+            throw OFFError.unreadable("Open Food Facts ha risposto HTTP \(status): \(start)")
+        }
+        let products = (decoded.products ?? []).compactMap(\.product)
         let oldest = products.compactMap { $0.last_modified_t?.value }.min()
         let foods = products.compactMap(food).filter { $0.per100.kcal >= 0 && $0.per100.kcal <= 950 && $0.barcode != nil }
         return (foods, oldest)
+    }
+
+    enum OFFError: LocalizedError {
+        case unreadable(String)
+        var errorDescription: String? { if case .unreadable(let m) = self { return m }; return nil }
     }
 
     static func search(_ text: String) async throws -> [Food] {
@@ -74,7 +89,7 @@ enum OpenFoodFacts {
                         URLQueryItem(name: "page_size", value: "20"),
                         URLQueryItem(name: "fields", value: "code,product_name,product_name_it,brands,serving_quantity,nutriments")]
         let (data, _) = try await session.data(from: c.url!)
-        return (try JSONDecoder().decode(SearchResponse.self, from: data).products ?? []).compactMap(food)
+        return ((try JSONDecoder().decode(SearchResponse.self, from: data).products ?? []).compactMap(\.product)).compactMap(food)
     }
 }
 
