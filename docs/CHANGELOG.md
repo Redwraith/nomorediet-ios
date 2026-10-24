@@ -1,5 +1,9 @@
 # Nomorediet — Novità
 
+## 4.13.2
+- GLM: le chiavi create su bigmodel.cn (la piattaforma cinese di Zhipu) ora funzionano come quelle di z.ai: l'app prova entrambi i server e ricorda quello giusto.
+- Se la chiave viene rifiutata, il messaggio riporta la risposta esatta del server, così si capisce se è copiata a metà o revocata.
+
 ## 4.13.1
 - Widget: con SideStore (e Impactor) il gruppo condiviso tra app e widget si chiama con il codice del tuo account; ora l'app lo trova e il widget riceve di nuovo calorie e proteine.
 - Aggiornamento del database alimenti: un prodotto con dati strani non blocca più tutto l'aggiornamento, e se Open Food Facts risponde con un errore il pannello di debug dice quale.

@@ -8,20 +8,28 @@ enum OpenAICompatibleAI {
     struct Provider {
         let engine: AIGuard.Engine
         let name: String
-        let base: String
+        /// Endpoints tried in order when connecting: a key works only on the platform that issued it
+        /// (z.ai international or bigmodel.cn in China). The one that accepted the key is remembered.
+        let bases: [String]
         let keyService: String
         let keyPage: URL
         /// Tried in order: the first the account can use is kept.
         let textModels: [String]
         let visionModels: [String]
         let free: Bool
+
+        var base: String {
+            let saved = UserDefaults.standard.string(forKey: "ai.base." + keyService)
+            return saved.flatMap { bases.contains($0) ? $0 : nil } ?? bases[0]
+        }
     }
 
-    static let glm = Provider(engine: .glm, name: "GLM", base: "https://api.z.ai/api/paas/v4",
+    static let glm = Provider(engine: .glm, name: "GLM",
+                              bases: ["https://api.z.ai/api/paas/v4", "https://open.bigmodel.cn/api/paas/v4"],
                               keyService: "app.piatto.ios.glm", keyPage: URL(string: "https://z.ai/manage-apikey/apikey-list")!,
                               textModels: ["glm-4.7-flash", "glm-4.5-flash"], visionModels: ["glm-4.6v-flash", "glm-4.1v-thinking-flash"],
                               free: true)
-    static let deepseek = Provider(engine: .deepseek, name: "DeepSeek", base: "https://api.deepseek.com",
+    static let deepseek = Provider(engine: .deepseek, name: "DeepSeek", bases: ["https://api.deepseek.com"],
                                    keyService: "app.piatto.ios.deepseek", keyPage: URL(string: "https://platform.deepseek.com/api_keys")!,
                                    textModels: ["deepseek-chat"], visionModels: [], free: false)
 
@@ -48,13 +56,31 @@ enum OpenAICompatibleAI {
 
     /// Checks the key with a tiny request and remembers which model answered.
     static func connect(key: String, provider p: Provider) async -> (ok: Bool, message: String) {
-        do {
-            let (_, model) = try await complete(provider: p, key: key, models: p.textModels,
-                                                messages: [["role": "user", "content": "Rispondi solo: ok"]], json: false, maxTokens: 8)
-            Keychain.save(key, service: p.keyService)
-            return (true, "\(p.name) collegato ✓ · \(model)")
-        } catch {
-            return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        var lastError: Error = FoodAI.Failure.server("\(p.name) non ha risposto.")
+        for base in p.bases {
+            do {
+                let (_, model) = try await complete(provider: p, key: key, models: p.textModels, base: base,
+                                                    messages: [["role": "user", "content": "Rispondi solo: ok"]], json: false, maxTokens: 8)
+                Keychain.save(key, service: p.keyService)
+                UserDefaults.standard.set(base, forKey: "ai.base." + p.keyService)
+                DebugLog.shared.add("info", "ai", "\(p.name) collegato su \(base) con \(model)")
+                return (true, "\(p.name) collegato ✓ · \(model)")
+            } catch let error as Unauthorized {
+                // a key from the other platform: try the next endpoint
+                lastError = error
+            } catch {
+                return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            }
+        }
+        return (false, (lastError as? LocalizedError)?.errorDescription ?? lastError.localizedDescription)
+    }
+
+    /// 401/403: the key was refused. Carries the provider's own words, so a wrong copy is told apart from a revoked key.
+    struct Unauthorized: LocalizedError {
+        let provider: String
+        let detail: String
+        var errorDescription: String? {
+            "Analisi non riuscita: chiave \(provider) rifiutata (\(detail)). Copiala di nuovo intera dalla pagina delle chiavi e ricollegala in Profilo → Analisi AI."
         }
     }
 
@@ -122,14 +148,14 @@ enum OpenAICompatibleAI {
     // MARK: Transport
 
     /// One chat completion; tries the next model when the account cannot use one, retries on overload.
-    static func complete(provider p: Provider, key: String, models: [String], messages: [[String: Any]], json: Bool, maxTokens: Int)
-        async throws -> (String, String) {
+    static func complete(provider p: Provider, key: String, models: [String], base: String? = nil, messages: [[String: Any]],
+                         json: Bool, maxTokens: Int) async throws -> (String, String) {
         var lastError: Error = FoodAI.Failure.server("\(p.name) non ha risposto.")
         for model in models {
             var body: [String: Any] = ["model": model, "messages": messages, "max_tokens": maxTokens, "temperature": 0.2, "stream": false]
             if json { body["response_format"] = ["type": "json_object"] }
             if p.engine == .glm { body["thinking"] = ["type": "disabled"] }
-            var request = URLRequest(url: URL(string: p.base + "/chat/completions")!)
+            var request = URLRequest(url: URL(string: (base ?? p.base) + "/chat/completions")!)
             request.httpMethod = "POST"
             request.timeoutInterval = 90
             request.setValue("application/json", forHTTPHeaderField: "content-type")
@@ -154,7 +180,9 @@ enum OpenAICompatibleAI {
                 let text = error?["message"] as? String ?? String(data: data, encoding: .utf8) ?? "HTTP \(status)"
                 DebugLog.shared.add("error", "ai", "\(p.name) \(model) tentativo \(attempt): HTTP \(status) \(text.prefix(200))")
                 switch status {
-                case 401, 403: throw FoodAI.Failure.server("chiave \(p.name) non valida: ricollegala in Profilo → Analisi AI.")
+                case 401, 403:
+                    let code = (error?["code"]).map { " \($0)" } ?? ""
+                    throw Unauthorized(provider: p.name, detail: "HTTP \(status)\(code): \(text.prefix(120))")
                 case 402: throw FoodAI.Failure.server("credito \(p.name) esaurito.")
                 case 429 where attempt < AIGuard.maxAttempts, 500, 502, 503, 504:
                     if attempt < AIGuard.maxAttempts {
