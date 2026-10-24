@@ -27,7 +27,7 @@ enum OpenAICompatibleAI {
     static let glm = Provider(engine: .glm, name: "GLM",
                               bases: ["https://api.z.ai/api/paas/v4", "https://open.bigmodel.cn/api/paas/v4"],
                               keyService: "app.piatto.ios.glm", keyPage: URL(string: "https://z.ai/manage-apikey/apikey-list")!,
-                              textModels: ["glm-4.7-flash", "glm-4.5-flash"], visionModels: ["glm-4.6v-flash", "glm-4.1v-thinking-flash"],
+                              textModels: ["glm-4.7-flash", "glm-4.5-flash", "glm-4-flash-250414", "glm-4-flash"], visionModels: ["glm-4.6v-flash", "glm-4.1v-thinking-flash"],
                               free: true)
     static let deepseek = Provider(engine: .deepseek, name: "DeepSeek", bases: ["https://api.deepseek.com"],
                                    keyService: "app.piatto.ios.deepseek", keyPage: URL(string: "https://platform.deepseek.com/api_keys")!,
@@ -65,6 +65,11 @@ enum OpenAICompatibleAI {
                 UserDefaults.standard.set(base, forKey: "ai.base." + p.keyService)
                 DebugLog.shared.add("info", "ai", "\(p.name) collegato su \(base) con \(model)")
                 return (true, "\(p.name) collegato ✓ · \(model)")
+            } catch let error as RateLimited {
+                // the key was accepted, only the quota is used up for now: keep it
+                Keychain.save(key, service: p.keyService)
+                UserDefaults.standard.set(base, forKey: "ai.base." + p.keyService)
+                return (true, "\(p.name) collegato ✓, ma ora risponde: " + error.message)
             } catch let error as Unauthorized {
                 // a key from the other platform: try the next endpoint
                 lastError = error
@@ -73,6 +78,12 @@ enum OpenAICompatibleAI {
             }
         }
         return (false, (lastError as? LocalizedError)?.errorDescription ?? lastError.localizedDescription)
+    }
+
+    /// 429 after the retries: the key works, the free quota or speed limit is used up.
+    struct RateLimited: LocalizedError {
+        let message: String
+        var errorDescription: String? { "Analisi non riuscita: " + message }
     }
 
     /// 401/403: the key was refused. Carries the provider's own words, so a wrong copy is told apart from a revoked key.
@@ -184,16 +195,24 @@ enum OpenAICompatibleAI {
                     let code = (error?["code"]).map { " \($0)" } ?? ""
                     throw Unauthorized(provider: p.name, detail: "HTTP \(status)\(code): \(text.prefix(120))")
                 case 402: throw FoodAI.Failure.server("credito \(p.name) esaurito.")
-                case 429 where attempt < AIGuard.maxAttempts, 500, 502, 503, 504:
+                case 500, 502, 503, 504:
                     if attempt < AIGuard.maxAttempts {
                         try await Task.sleep(for: .seconds(AIGuard.backoff(attempt: attempt, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "retry-after"))))
                         continue
                     }
                     throw FoodAI.Failure.server("\(p.name) è sovraccarico, riprova tra poco.")
-                case 429: throw FoodAI.Failure.server("limite di \(p.name) raggiunto: riprova più tardi.")
+                case 429:
+                    // Z.ai answers 429 both for "too fast" (worth waiting) and for a model the account has no
+                    // quota for (code 1113, waiting is useless): then the next free model is tried at once.
+                    let code = (error?["code"]).map { "\($0)" } ?? ""
+                    if code != "1113", attempt < AIGuard.maxAttempts {
+                        try await Task.sleep(for: .seconds(AIGuard.backoff(attempt: attempt, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "retry-after"))))
+                        continue
+                    }
+                    lastError = RateLimited(message: "limite di \(p.name) raggiunto (\(model)\(code.isEmpty ? "" : ", codice " + code): \(text.prefix(120))). Riprova più tardi.")
                 default:
                     // a model this account cannot use: try the next one
-                    lastError = FoodAI.Failure.server(String(text.prefix(200)))
+                    if !(lastError is RateLimited) { lastError = FoodAI.Failure.server(String(text.prefix(200))) }
                 }
                 break
             }

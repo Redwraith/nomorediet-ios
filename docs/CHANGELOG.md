@@ -1,5 +1,9 @@
 # Nomorediet — Novità
 
+## 4.13.3
+- GLM "limite raggiunto": se un modello gratuito non è disponibile per il tuo account (codice 1113) l'app passa subito al successivo (glm-4.7-flash, glm-4.5-flash, glm-4-flash) invece di arrendersi; il messaggio dice quale modello e il codice di Z.ai.
+- Una chiave accettata ma al limite resta collegata: non serve reinserirla.
+
 ## 4.13.2
 - GLM: le chiavi create su bigmodel.cn (la piattaforma cinese di Zhipu) ora funzionano come quelle di z.ai: l'app prova entrambi i server e ricorda quello giusto.
 - Se la chiave viene rifiutata, il messaggio riporta la risposta esatta del server, così si capisce se è copiata a metà o revocata.
