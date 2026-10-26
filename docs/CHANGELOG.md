@@ -1,5 +1,10 @@
 # Nomorediet — Novità
 
+## 4.14
+- Torna l'elenco degli alimenti: in Oggi ogni pasto ha il suo + e sotto "Cosa hai mangiato?" ci sono Elenco alimenti, Codice a barre, Foto e A mano. Senza scrivere niente vedi tutto l'elenco in ordine alfabetico, i tuoi alimenti e i recenti.
+- Attrezzi occupati: in ogni allenamento segni cosa è occupato (bilanciere, manubri, cavi, macchine, multipower, sbarra) e "Adatta la scheda di oggi" cambia da solo gli esercizi che lo usano con alternative libere. Gli esercizi con un attrezzo occupato sono segnalati.
+- Scegli i tuoi esercizi: in Cambia esercizio attiva "Tienilo sempre nella scheda" e la scelta resta ogni settimana; "Torna a…" ripristina quello originale.
+
 ## 4.13.3
 - GLM "limite raggiunto": se un modello gratuito non è disponibile per il tuo account (codice 1113) l'app passa subito al successivo (glm-4.7-flash, glm-4.5-flash, glm-4-flash) invece di arrendersi; il messaggio dice quale modello e il codice di Z.ai.
 - Una chiave accettata ma al limite resta collegata: non serve reinserirla.

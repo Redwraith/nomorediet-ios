@@ -283,10 +283,35 @@ enum ExerciseSwaps {
     }
 
     private static func key(_ original: String, day: String) -> String { "swap.\(day).\(original)" }
+    /// The choice that stays in the plan every time this exercise comes up.
+    private static func alwaysKey(_ original: String) -> String { "swap.always.\(original)" }
 
-    /// The exercise done instead of `original` on `day`, if any.
+    /// Alternatives whose equipment is free right now first; those needing busy equipment last.
+    static func available(for exercise: Exercise, busy: Set<Equipment> = Equipment.busyNow) -> [Option] {
+        let all = alternatives(for: exercise)
+        return all.filter { Equipment.isFree($0.name, busy: busy) } + all.filter { !Equipment.isFree($0.name, busy: busy) }
+    }
+
+    /// Today, swaps every exercise of `day` that needs busy equipment for its first alternative that does not.
+    /// Returns how many were changed.
+    @discardableResult
+    static func adapt(_ day: WorkoutDay, busy: Set<Equipment> = Equipment.busyNow, on date: String = DayId.today) -> Int {
+        var changed = 0
+        for exercise in day.blocks.flatMap(\.exercises) {
+            let current = resolved(exercise, day: date)
+            guard !Equipment.isFree(current.name, busy: busy) else { continue }
+            if let free = available(for: exercise, busy: busy).first(where: { Equipment.isFree($0.name, busy: busy) }) {
+                set(free.name == exercise.name ? nil : free, for: exercise.name, day: date)
+                changed += 1
+            }
+        }
+        return changed
+    }
+
+    /// The exercise done instead of `original` on `day`, if any: the swap for that day, else the one kept in the plan.
     static func swap(for original: String, day: String = DayId.today) -> Option? {
-        guard let name = UserDefaults.standard.string(forKey: key(original, day: day)) else { return nil }
+        guard let name = UserDefaults.standard.string(forKey: key(original, day: day))
+                ?? UserDefaults.standard.string(forKey: alwaysKey(original)) else { return nil }
         if let item = ExerciseCatalog.shared.item(named: name), item.name == name {
             return Option(name: name, pattern: ExerciseCatalog.pattern(for: item), cue: item.instructions.first ?? "")
         }
@@ -294,10 +319,24 @@ enum ExerciseSwaps {
             ?? Option(name: name, pattern: PlanParser.pattern(for: name), cue: "Alternativa indicata nella tua scheda.")
     }
 
-    static func set(_ option: Option?, for original: String, day: String = DayId.today) {
-        if let option { UserDefaults.standard.set(option.name, forKey: key(original, day: day)) }
-        else { UserDefaults.standard.removeObject(forKey: key(original, day: day)) }
+    /// `always`: the choice stays in the plan (every week), not only on `day`. Nil restores the plan's exercise.
+    static func set(_ option: Option?, for original: String, day: String = DayId.today, always: Bool = false) {
+        let defaults = UserDefaults.standard
+        if let option {
+            if always {
+                defaults.set(option.name, forKey: alwaysKey(original))
+                defaults.removeObject(forKey: key(original, day: day))
+            } else {
+                defaults.set(option.name, forKey: key(original, day: day))
+            }
+        } else {
+            defaults.removeObject(forKey: key(original, day: day))
+            if always { defaults.removeObject(forKey: alwaysKey(original)) }
+        }
     }
+
+    /// The exercise chosen for good in place of `original`, if any.
+    static func kept(for original: String) -> String? { UserDefaults.standard.string(forKey: alwaysKey(original)) }
 
     /// The exercise to show today: the original, or its replacement with the same sets and reps.
     static func resolved(_ exercise: Exercise, day: String = DayId.today) -> Exercise {
@@ -321,6 +360,65 @@ enum ExerciseSwaps {
             if hits > 0, hits > (best?.1 ?? 0) || hits == best?.1 && name.count < (best?.0.count ?? .max) { best = (name, hits) }
         }
         return best?.0
+    }
+}
+
+/// Gym equipment, to pick exercises by what is free right now. Read from the exercise name.
+enum Equipment: String, CaseIterable, Identifiable {
+    case bilanciere, manubri, cavi, macchine, multipower, sbarra
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .bilanciere: "Bilanciere"
+        case .manubri: "Manubri"
+        case .cavi: "Cavi"
+        case .macchine: "Macchine"
+        case .multipower: "Multipower"
+        case .sbarra: "Sbarra / parallele"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .bilanciere: "figure.strengthtraining.traditional"
+        case .manubri: "dumbbell.fill"
+        case .cavi: "cable.connector"
+        case .macchine: "gearshape.2.fill"
+        case .multipower: "square.split.1x2.fill"
+        case .sbarra: "figure.climbing"
+        }
+    }
+
+    /// What an exercise needs, from its Italian name ("Row singolo al cavo seduto" → cavi).
+    static func needs(_ name: String) -> Set<Equipment> {
+        let n = name.lowercased()
+        var out = Set<Equipment>()
+        if n.contains("multipower") || n.contains("smith") { out.insert(.multipower) }
+        else if n.contains("bilanciere") || n.contains("t-bar") || n.contains("landmine") { out.insert(.bilanciere) }
+        if n.contains("manubri") || n.contains("manubrio") { out.insert(.manubri) }
+        if ["cavo", "cavi", "pulley", "face pull", "push down", "pushdown", "crossover", "pull-through", "pulldown a braccia"]
+            .contains(where: n.contains) { out.insert(.cavi) }
+        if ["macchina", "machine", "leg press", "pressa", "leg extension", "leg curl", "pec deck", "chest press", "shoulder press",
+            "adductor", "abductor", "hammer", "low row", "hack", "reverse pec", "scott"].contains(where: n.contains) {
+            out.insert(.macchine)
+        }
+        if ["trazioni", "sbarra", "parallele", "dip "].contains(where: n.contains) || n.hasPrefix("dip") { out.insert(.sbarra) }
+        // "Pulldown al cavo alto" is a cable even though it says pulldown; "Lat machine" is a machine
+        return out
+    }
+
+    static func isFree(_ name: String, busy: Set<Equipment>) -> Bool { needs(name).isDisjoint(with: busy) }
+
+    private static func key(_ day: String) -> String { "equipment.busy.\(day)" }
+
+    /// Equipment marked busy today (resets the next day).
+    static var busyNow: Set<Equipment> {
+        get { busy(on: DayId.today) }
+        set { UserDefaults.standard.set(newValue.map(\.rawValue).sorted(), forKey: key(DayId.today)) }
+    }
+
+    static func busy(on day: String) -> Set<Equipment> {
+        Set((UserDefaults.standard.stringArray(forKey: key(day)) ?? []).compactMap(Equipment.init(rawValue:)))
     }
 }
 

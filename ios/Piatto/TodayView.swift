@@ -45,6 +45,7 @@ struct TodayView: View {
                     RingsCard(totals: totals, goals: goals, big: store.profile.simpleMode)
                     if app.day == DayId.today { SupplementsCard() }
                     SayMealCard()
+                    otherWays
                     ForEach(MealSlot.allCases) { slot in mealSection(slot) }
                     weightRow
                 }
@@ -85,6 +86,33 @@ struct TodayView: View {
             Label("Riposo", systemImage: "bed.double.fill").tag(DayKind.rest)
         }
         .pickerStyle(.segmented)
+    }
+
+    /// Besides writing or saying the meal: the food list, barcode, photo and values by hand.
+    private var otherWays: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Altri modi per registrare").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                otherWay("Elenco alimenti", "list.bullet", .search)
+                otherWay("Codice a barre", "barcode.viewfinder", .barcode)
+                otherWay("Foto", "camera.fill", .photo)
+                otherWay("A mano", "square.and.pencil", .manual)
+            }
+        }
+    }
+
+    private func otherWay(_ title: String, _ icon: String, _ mode: AddFoodView.Mode) -> some View {
+        Button { app.sheet = .addFood(.now, mode) } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon).font(.title3)
+                Text(title).font(.caption2).multilineTextAlignment(.center).lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.accent)
+        .accessibilityIdentifier("other-\(mode.rawValue)")
     }
 
     private var simpleButtons: some View {
@@ -128,6 +156,11 @@ struct TodayView: View {
                 Label(slot.title, systemImage: slot.icon).font(.headline)
                 Spacer()
                 if kcal > 0 { Text("\(kcal.it()) kcal").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary) }
+                Button { app.sheet = .addFood(slot, .search) } label: {
+                    Image(systemName: "plus.circle.fill").font(.title2)
+                }
+                .accessibilityLabel("Aggiungi a \(slot.title)")
+                .accessibilityIdentifier("add-\(slot.rawValue)")
             }
             if items.isEmpty { Text("Niente ancora").font(.subheadline).foregroundStyle(.tertiary) }
             ForEach(items) { entry in

@@ -793,3 +793,40 @@ final class AlgorithmReviewTests: XCTestCase {
     }
 }
 
+
+final class EquipmentTests: XCTestCase {
+    func testEquipmentIsReadFromTheName() {
+        XCTAssertEqual(Equipment.needs("Row singolo al cavo seduto"), [.cavi])
+        XCTAssertEqual(Equipment.needs("Panca piana manubri presa neutra"), [.manubri])
+        XCTAssertEqual(Equipment.needs("Lat machine presa neutra"), [.macchine])
+        XCTAssertEqual(Equipment.needs("Leg press 45°"), [.macchine])
+        XCTAssertEqual(Equipment.needs("Panca inclinata al multipower"), [.multipower])
+        XCTAssertEqual(Equipment.needs("Trazioni alla sbarra"), [.sbarra])
+        XCTAssertTrue(Equipment.needs("Piegamenti sulle braccia").isEmpty)
+    }
+
+    func testAdaptSwapsOnlyExercisesWithBusyEquipment() {
+        let day = "2099-01-01"
+        let plan = Progression.withRoles(Preferences.personalize(WorkoutPlan.nomoredietDays))[0]
+        let exercises = plan.blocks.flatMap(\.exercises)
+        defer { for e in exercises { ExerciseSwaps.set(nil, for: e.name, day: day) } }
+        ExerciseSwaps.adapt(plan, busy: [.cavi], on: day)
+        for e in exercises {
+            let now = ExerciseSwaps.resolved(e, day: day)
+            if Equipment.isFree(e.name, busy: [.cavi]) {
+                XCTAssertEqual(now.name, e.name, "\(e.name) non doveva cambiare")
+            } else if now.name != e.name {
+                XCTAssertTrue(Equipment.isFree(now.name, busy: [.cavi]), "\(e.name) → \(now.name) usa ancora i cavi")
+            }
+        }
+    }
+
+    func testAlwaysSwapStaysOnOtherDays() {
+        let option = ExerciseSwaps.Option(name: "Chest press alla macchina", pattern: "push_h", cue: "")
+        defer { ExerciseSwaps.set(nil, for: "Test panca", day: "2099-01-02", always: true) }
+        ExerciseSwaps.set(option, for: "Test panca", day: "2099-01-02", always: true)
+        XCTAssertEqual(ExerciseSwaps.swap(for: "Test panca", day: "2099-02-10")?.name, "Chest press alla macchina")
+        ExerciseSwaps.set(nil, for: "Test panca", day: "2099-01-02", always: true)
+        XCTAssertNil(ExerciseSwaps.swap(for: "Test panca", day: "2099-02-10"))
+    }
+}

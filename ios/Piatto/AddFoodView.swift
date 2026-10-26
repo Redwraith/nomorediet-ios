@@ -167,7 +167,13 @@ struct AddFoodView: View {
             if !recent.isEmpty {
                 Section("Recenti") { ForEach(recent) { foodRow($0) } }
             }
-            Section("Suggeriti") { ForEach(FoodDatabase.foods.prefix(20)) { foodRow($0) } }
+            if !ownFoods.isEmpty {
+                Section("I miei alimenti") { ForEach(ownFoods) { foodRow($0) } }
+            }
+            // the whole built-in list, alphabetical: browse it or type to search the large database
+            Section("Elenco alimenti · \(FoodDatabase.foods.count)") {
+                ForEach(FoodDatabase.foods.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }) { foodRow($0) }
+            }
         } else {
             if !local.isEmpty { Section("Alimenti") { ForEach(local.prefix(30)) { foodRow($0) } } }
             if !databaseResults.isEmpty {

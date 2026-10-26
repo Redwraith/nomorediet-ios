@@ -239,6 +239,31 @@ struct WorkoutDayView: View {
     }
     /// Bumped when an exercise is swapped, to redraw the cards.
     @State private var swaps = 0
+    @State private var busy = Equipment.busyNow
+    @State private var adaptMessage: String?
+
+    /// Mark what is busy in the gym; one tap swaps today's exercises that need it.
+    private var equipmentCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Attrezzi occupati adesso").font(.headline)
+            EquipmentChips(busy: $busy)
+            if !busy.isEmpty {
+                Button {
+                    let n = ExerciseSwaps.adapt(day, busy: busy)
+                    adaptMessage = n == 0 ? "Gli esercizi di oggi usano già attrezzi liberi." : "Cambiati \(n) esercizi per oggi con alternative libere."
+                    swaps += 1
+                } label: {
+                    Label("Adatta la scheda di oggi", systemImage: "wand.and.stars").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("equip-adapt")
+            }
+            if let adaptMessage { Text(adaptMessage).font(.caption).foregroundStyle(.secondary) }
+        }
+        .padding(14)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .onChange(of: busy) { _, _ in swaps += 1; adaptMessage = nil }
+    }
 
     var body: some View {
         let phase = Progression.phase()
@@ -252,6 +277,7 @@ struct WorkoutDayView: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                equipmentCard
                 ForEach(day.blocks) { block in
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .firstTextBaseline) {
@@ -429,9 +455,13 @@ struct ExerciseCard: View {
                 Button { choosingSwap = true } label: { Label("Cambia esercizio", systemImage: "arrow.triangle.2.circlepath") }
                     .buttonStyle(.bordered).controlSize(.small)
                 if exercise.name != original.name {
-                    Button("Ripristina") { ExerciseSwaps.set(nil, for: original.name); swapped() }
+                    Button("Ripristina") { ExerciseSwaps.set(nil, for: original.name, always: true); swapped() }
                         .buttonStyle(.bordered).controlSize(.small)
                 }
+            }
+            if !Equipment.isFree(exercise.name, busy: Equipment.busyNow) {
+                Label("Attrezzo occupato: tocca Cambia esercizio", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.orange)
             }
             if let note { Label(note, systemImage: "info.circle").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             if let suggestion {
@@ -504,8 +534,8 @@ struct ExerciseCard: View {
             }
         }
         .sheet(isPresented: $choosingSwap) {
-            SwapSheet(original: original, current: exercise) { option in
-                ExerciseSwaps.set(option, for: original.name)
+            SwapSheet(original: original, current: exercise) { option, always in
+                ExerciseSwaps.set(option, for: original.name, always: always)
                 choosingSwap = false
                 swapped()
             }
@@ -692,37 +722,89 @@ struct TimerSheet: View {
 struct SwapSheet: View {
     var original: Exercise
     var current: Exercise
-    var pick: (ExerciseSwaps.Option?) -> Void
+    /// The chosen option (nil = the plan's exercise) and whether it stays in the plan.
+    var pick: (ExerciseSwaps.Option?, Bool) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var always = false
+    @State private var busy = Equipment.busyNow
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Text("Stesse serie e ripetizioni, stessi muscoli. Vale solo per oggi.").font(.footnote).foregroundStyle(.secondary)
-                }
-                ForEach(ExerciseSwaps.alternatives(for: original), id: \.self) { option in
-                    Button { pick(option.name == original.name ? nil : option) } label: {
-                        HStack(spacing: 12) {
-                            MovementFigure(pattern: option.pattern, size: 64)
-                                .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(option.name).font(.headline)
-                                Text(option.cue).font(.caption).foregroundStyle(.secondary)
-                            }
-                            .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 4)
-                            if option.name == current.name { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                    Toggle(isOn: $always) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Tienilo sempre nella scheda")
+                            Text(always ? "Lo trovi al posto di \(original.name) ogni settimana."
+                                        : "Vale solo per oggi: la prossima volta torna \(original.name).")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("swap-always")
+                    if current.name != original.name || ExerciseSwaps.kept(for: original.name) != nil {
+                        Button("Torna a \(original.name)") { pick(nil, true) }
+                    }
+                } footer: { Text("Stesse serie e ripetizioni, stessi muscoli.") }
+                Section {
+                    EquipmentChips(busy: $busy)
+                } header: { Text("Cosa è occupato adesso?") } footer: {
+                    Text("Gli esercizi con un attrezzo occupato finiscono in fondo alla lista.")
                 }
-                CatalogSwapSection(pattern: original.pattern) { pick($0) }
+                Section("Alternative") {
+                    ForEach(ExerciseSwaps.available(for: original, busy: busy), id: \.self) { option in
+                        let free = Equipment.isFree(option.name, busy: busy)
+                        Button { pick(option.name == original.name ? nil : option, always) } label: {
+                            HStack(spacing: 12) {
+                                MovementFigure(pattern: option.pattern, size: 64)
+                                    .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(option.name).font(.headline)
+                                    if !free { Text("Attrezzo occupato").font(.caption.weight(.semibold)).foregroundStyle(.orange) }
+                                    Text(option.cue).font(.caption).foregroundStyle(.secondary)
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 4)
+                                if option.name == current.name { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                            }
+                            .opacity(free ? 1 : 0.5)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                CatalogSwapSection(pattern: original.pattern) { pick($0, always) }
             }
             .navigationTitle("Al posto di \(original.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() }.accessibilityIdentifier("swap-close") } }
+        }
+    }
+}
+
+/// Toggles for the equipment that is busy right now; saved for today.
+struct EquipmentChips: View {
+    @Binding var busy: Set<Equipment>
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 8)], spacing: 8) {
+            ForEach(Equipment.allCases) { item in
+                let isBusy = busy.contains(item)
+                Button {
+                    if isBusy { busy.remove(item) } else { busy.insert(item) }
+                    Equipment.busyNow = busy
+                    UISelectionFeedbackGenerator().selectionChanged()
+                } label: {
+                    Label(item.title, systemImage: isBusy ? "xmark.circle.fill" : item.icon)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .foregroundStyle(isBusy ? Color.orange : Color.primary)
+                        .background((isBusy ? Color.orange : Theme.accent).opacity(0.15), in: Capsule())
+                        .strikethrough(isBusy)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.title + (isBusy ? ", occupato" : ", libero"))
+                .accessibilityIdentifier("equip-\(item.rawValue)")
+            }
         }
     }
 }
