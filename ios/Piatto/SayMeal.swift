@@ -110,15 +110,7 @@ struct SayMealCard: View {
     }
 
     private var engineLabel: String {
-        guard FoodAI.isReady else { return "Nomorediet" }
-        switch AIGuard.shared.settings.engine {
-        case .apple: return "L'AI dell'iPhone"
-        case .claude: return "Claude"
-        case .gemini: return "Gemini"
-        case .glm: return "GLM"
-        case .deepseek: return "DeepSeek"
-        case .groq: return "Groq"
-        }
+        AIRouter.engines(for: .text).first.map(AIRouter.name) ?? "Nomorediet"
     }
 
     private func startListening() {

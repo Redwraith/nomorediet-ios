@@ -23,6 +23,11 @@ final class AIGuard: ObservableObject {
         var engine = Engine.apple
         var monthlyBudgetUSD = 5.0
         var dailyMaxCalls = 25
+        /// "Scelta automatica": each task (photo, text and voice, coach) uses the best ready free engine, and the
+        /// next one when it fails. Off: only `engine` is used for everything.
+        var auto = true
+
+        enum CodingKeys: String, CodingKey { case enabled, engine, monthlyBudgetUSD, dailyMaxCalls, auto }
     }
 
     struct Call: Codable, Identifiable, Hashable {
@@ -110,5 +115,19 @@ final class AIGuard: ObservableObject {
     static func backoff(attempt: Int, retryAfter: String?) -> Double {
         if let header = retryAfter, let seconds = Double(header) { return min(seconds, 20) }
         return min(pow(2, Double(attempt)), 20)
+    }
+}
+
+/// Settings saved by earlier versions have no "auto" key (and a missing key would make the whole decode fail and
+/// reset the budget and the engine). Whoever had chosen a paid engine by hand keeps it; everyone else gets the
+/// automatic choice among the free ones. In an extension so the memberwise initializer stays available.
+extension AIGuard.Settings {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        engine = try c.decodeIfPresent(AIGuard.Engine.self, forKey: .engine) ?? .apple
+        monthlyBudgetUSD = try c.decodeIfPresent(Double.self, forKey: .monthlyBudgetUSD) ?? 5.0
+        dailyMaxCalls = try c.decodeIfPresent(Int.self, forKey: .dailyMaxCalls) ?? 25
+        auto = try c.decodeIfPresent(Bool.self, forKey: .auto) ?? (engine != .claude && engine != .deepseek)
     }
 }

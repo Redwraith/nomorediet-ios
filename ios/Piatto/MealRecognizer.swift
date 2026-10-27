@@ -63,13 +63,17 @@ enum MealRecognizer {
         aiScaleGrams = 0
         if FoodAI.isReady {
             do {
-                switch AIGuard.shared.settings.engine {
-                case .apple: raw = try await OnDeviceAI.recognize(input, corrections: corrections)
-                case .claude: raw = try await FoodAI.recognize(input, catalog: catalog(foods), corrections: corrections)
-                case .gemini: raw = try await GeminiAI.recognize(input, catalog: catalog(foods), corrections: corrections)
-                case .glm, .deepseek, .groq:
-                    guard let provider = OpenAICompatibleAI.provider(AIGuard.shared.settings.engine) else { throw FoodAI.Failure.empty }
-                    raw = try await OpenAICompatibleAI.recognize(input, catalog: catalog(foods), corrections: corrections, provider: provider)
+                // the best ready engine for a photo or for a text, and the next one if it fails
+                let request = input
+                raw = try await AIRouter.run(request.image != nil ? .photo : .text) { engine -> (dish: String, items: [Raw], note: String) in
+                    switch engine {
+                    case .apple: return try await OnDeviceAI.recognize(request, corrections: corrections)
+                    case .claude: return try await FoodAI.recognize(request, catalog: catalog(foods), corrections: corrections)
+                    case .gemini: return try await GeminiAI.recognize(request, catalog: catalog(foods), corrections: corrections)
+                    case .glm, .deepseek, .groq:
+                        guard let provider = OpenAICompatibleAI.provider(engine) else { throw FoodAI.Failure.empty }
+                        return try await OpenAICompatibleAI.recognize(request, catalog: catalog(foods), corrections: corrections, provider: provider)
+                    }
                 }
             } catch {
                 // a typed or spoken meal never ends with nothing: when the AI fails, the offline parser takes over

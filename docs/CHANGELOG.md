@@ -1,5 +1,10 @@
 # Nomorediet — Novità
 
+## 4.18
+- Scelta automatica del motore AI: ogni compito usa il motore gratuito migliore tra quelli che hai collegato. Foto: Gemini, poi Groq, GLM e il modello dell'iPhone. Testo e voce: Groq, poi Gemini, GLM e iPhone. Coach: Groq, poi Gemini, GLM e iPhone. Se un motore è sovraccarico, finito di quota o non risponde, l'app passa da sola al successivo senza perdere la richiesta. "Nessun cibo nella foto", il limite giornaliero e il budget non fanno cambiare motore.
+- Claude e DeepSeek, a pagamento, non vengono mai scelti da soli: si usano solo spegnendo "Scelta automatica" in Profilo → Analisi AI e scegliendoli a mano. Chi aveva già scelto Claude o DeepSeek resta con la scelta manuale.
+- In Profilo → Analisi AI vedi, per foto, testo e coach, quali motori verranno usati e in che ordine.
+
 ## 4.17
 - Nuovo motore AI gratuito e velocissimo: Groq. Profilo → Analisi AI → "Groq" → "Accedi a Groq e collega la chiave": entri su console.groq.com (anche con Google), crei la chiave, la copi e tornando nell'app viene collegata da sola. Testo e voce usano Llama 3.3 70B (con gpt-oss-120b di riserva), le foto Llama 4 Scout. Funziona anche per il coach.
 

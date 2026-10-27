@@ -40,17 +40,9 @@ enum FoodAI {
 
     static var hasKey: Bool { Keychain.read() != nil }
 
-    /// The engine chosen in Profile is ready to analyse photos.
-    @MainActor static var isReady: Bool {
-        switch AIGuard.shared.settings.engine {
-        case .apple: OnDeviceAI.isAvailable
-        case .claude: hasKey
-        case .gemini: GeminiAI.isReady
-        case .glm: OpenAICompatibleAI.hasKey(OpenAICompatibleAI.glm)
-        case .deepseek: OpenAICompatibleAI.hasKey(OpenAICompatibleAI.deepseek)
-        case .groq: OpenAICompatibleAI.hasKey(OpenAICompatibleAI.groq)
-        }
-    }
+    /// At least one engine is ready: with "Scelta automatica" any connected free engine (or the iPhone's own model),
+    /// otherwise the one chosen in Profile.
+    @MainActor static var isReady: Bool { !AIRouter.engines(for: .text).isEmpty }
 
     static let model = "claude-opus-5-5"
 

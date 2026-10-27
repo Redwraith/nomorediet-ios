@@ -881,3 +881,38 @@ final class GroqProviderTests: XCTestCase {
         XCTAssertFalse(OpenAICompatibleAI.looksLikeKey("AIza" + String(repeating: "a", count: 40), for: OpenAICompatibleAI.groq))
     }
 }
+
+@MainActor
+final class AIRouterTests: XCTestCase {
+    func testEachTaskHasItsBestEngineFirst() {
+        XCTAssertEqual(AIRouter.preference(for: .photo).first, .gemini)
+        XCTAssertEqual(AIRouter.preference(for: .text).first, .groq)
+        XCTAssertEqual(AIRouter.preference(for: .coach).first, .groq)
+    }
+
+    func testPaidEnginesAreNeverChosenAutomatically() {
+        for task in AITask.allCases {
+            XCTAssertFalse(AIRouter.preference(for: task).contains(.claude))
+            XCTAssertFalse(AIRouter.preference(for: task).contains(.deepseek))
+        }
+    }
+
+    func testAFailureMovesToTheNextEngineExceptWhenThereIsNoFood() {
+        XCTAssertTrue(AIRouter.shouldTryNext(after: FoodAI.Failure.network("offline")))
+        XCTAssertTrue(AIRouter.shouldTryNext(after: OpenAICompatibleAI.RateLimited(message: "limite")))
+        XCTAssertFalse(AIRouter.shouldTryNext(after: FoodAI.Failure.notFood("un computer")))
+        XCTAssertFalse(AIRouter.shouldTryNext(after: AIGuard.Block.disabled))
+        XCTAssertFalse(AIRouter.shouldTryNext(after: CancellationError()))
+    }
+
+    func testSettingsSavedBeforeAutoKeepTheirValues() throws {
+        let paid = #"{"enabled":true,"engine":"claude","monthlyBudgetUSD":7,"dailyMaxCalls":40}"#
+        let kept = try JSONDecoder().decode(AIGuard.Settings.self, from: Data(paid.utf8))
+        XCTAssertEqual(kept.engine, .claude)
+        XCTAssertEqual(kept.monthlyBudgetUSD, 7)
+        XCTAssertEqual(kept.dailyMaxCalls, 40)
+        XCTAssertFalse(kept.auto, "chi aveva scelto Claude a mano non passa ai motori gratuiti da solo")
+        let free = #"{"enabled":true,"engine":"glm","monthlyBudgetUSD":5,"dailyMaxCalls":25}"#
+        XCTAssertTrue(try JSONDecoder().decode(AIGuard.Settings.self, from: Data(free.utf8)).auto)
+    }
+}

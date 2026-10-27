@@ -204,16 +204,18 @@ enum CoachAI {
     @MainActor static var appleSession: AnyObject?
 
     @MainActor static func reply(to text: String, history: [ChatMessage], situation: String) async throws -> (String, [ToldSets]) {
-        let settings = AIGuard.shared.settings
-        switch settings.engine {
-        case .apple: return try await apple(text, situation: situation)
-        case .claude: return try await claude(text, history: history, situation: situation)
-        case .gemini: return try await gemini(text, history: history, situation: situation)
-        case .glm, .deepseek, .groq:
-            guard let provider = OpenAICompatibleAI.provider(settings.engine) else { throw FoodAI.Failure.server("motore non disponibile") }
-            let parsed = try await OpenAICompatibleAI.chat(system: system + "\n\nDATI DI OGGI:\n" + situation, schema: schema(gemini: false),
-                                                           history: history.map { (user: $0.fromUser, text: $0.text) }, text: text, provider: provider)
-            return parse(parsed)
+        // the best ready engine for the chat (the fastest first), and the next one if it fails
+        try await AIRouter.run(.coach) { engine -> (String, [ToldSets]) in
+            switch engine {
+            case .apple: return try await apple(text, situation: situation)
+            case .claude: return try await claude(text, history: history, situation: situation)
+            case .gemini: return try await gemini(text, history: history, situation: situation)
+            case .glm, .deepseek, .groq:
+                guard let provider = OpenAICompatibleAI.provider(engine) else { throw FoodAI.Failure.server("motore non disponibile") }
+                let parsed = try await OpenAICompatibleAI.chat(system: system + "\n\nDATI DI OGGI:\n" + situation, schema: schema(gemini: false),
+                                                               history: history.map { (user: $0.fromUser, text: $0.text) }, text: text, provider: provider)
+                return parse(parsed)
+            }
         }
     }
 

@@ -56,7 +56,13 @@ struct ProfileTab: View {
                     Text("I giorni di allenamento hanno più carboidrati e quelli di riposo meno, con la stessa media settimanale. Dopo 2 settimane di dati il mantenimento si adatta da solo.")
                 }
                 Section {
-                    Picker("Motore", selection: $ai.settings.engine) {
+                    Toggle("Scelta automatica del motore", isOn: $ai.settings.auto)
+                    if ai.settings.auto {
+                        Text(AIRouter.summary()).font(.footnote).foregroundStyle(.secondary)
+                        Text("Per ogni compito uso il motore gratuito migliore tra quelli collegati e passo al successivo se uno non risponde. Claude e DeepSeek, a pagamento, si usano solo scegliendoli a mano.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Picker(ai.settings.auto ? "Collega un motore" : "Motore", selection: $ai.settings.engine) {
                         Text("Groq (gratis, velocissimo, testo e foto)").tag(AIGuard.Engine.groq)
                         Text("GLM di Z.ai (gratis, testo e foto)").tag(AIGuard.Engine.glm)
                         Text("Gemini (gratis, chiave Google)").tag(AIGuard.Engine.gemini)

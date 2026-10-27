@@ -79,7 +79,8 @@ struct AddFoodView: View {
                 if analyzing {
                     HStack(spacing: 12) {
                         ProgressView()
-                        Text(AIGuard.shared.settings.engine == .apple ? "Analizzo la foto sull'iPhone…" : "Claude sta analizzando la foto…").foregroundStyle(.secondary)
+                        Text(AIRouter.engines(for: .photo).first.map { $0 == .apple ? "Analizzo la foto sull'iPhone…" : "\(AIRouter.name($0)) sta analizzando la foto…" }
+                             ?? "Analizzo la foto…").foregroundStyle(.secondary)
                     }
                 }
                 if !aiItems.isEmpty { aiSection }
