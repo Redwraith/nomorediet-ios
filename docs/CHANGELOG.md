@@ -1,5 +1,9 @@
 # Nomorediet — Novità
 
+## 4.15
+- Aggiornamento del database alimenti: se Open Food Facts è giù o sovraccarico l'app riprova ogni pagina 3 volte con attese crescenti e poi si ferma per 6 ore, invece di richiamare il server a ogni apertura dell'app. "Aggiorna ora" in Profilo continua a funzionare quando vuoi.
+- Pannello di debug più pulito: l'errore di Apple Salute (per esempio il permesso mancante dopo l'installazione con SideStore) compare una volta per avvio e non a ogni apertura, e l'arrivo in palestra non viene più scritto due volte.
+
 ## 4.14
 - Torna l'elenco degli alimenti: in Oggi ogni pasto ha il suo + e sotto "Cosa hai mangiato?" ci sono Elenco alimenti, Codice a barre, Foto e A mano. Senza scrivere niente vedi tutto l'elenco in ordine alfabetico, i tuoi alimenti e i recenti.
 - Attrezzi occupati: in ogni allenamento segni cosa è occupato (bilanciere, manubri, cavi, macchine, multipower, sbarra) e "Adatta la scheda di oggi" cambia da solo gli esercizi che lo usano con alternative libere. Gli esercizi con un attrezzo occupato sono segnalati.

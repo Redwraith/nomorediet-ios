@@ -13,6 +13,11 @@ enum FoodUpdater {
     private static let interval: TimeInterval = 7 * 86400
     private static let maxPages = 30
     private static let spacing: Duration = .seconds(7)
+    /// A failed run (Open Food Facts down or overloaded) is not retried by the foreground fallback for this long,
+    /// otherwise every time the app comes to the front would hit the server again.
+    private static let failedKey = "fooddb.lastFailure"
+    private static let retryCooldown: TimeInterval = 6 * 3600
+    private static let pageAttempts = 3
     private static var running = false
 
     static var lastUpdate: Date? { UserDefaults.standard.object(forKey: lastKey) as? Date }
@@ -33,10 +38,32 @@ enum FoodUpdater {
         try? BGTaskScheduler.shared.submit(request)
     }
 
-    /// Foreground fallback: updates when the last run is older than 7 days.
+    /// Foreground fallback: updates when the last run is older than 7 days and the last attempt did not fail
+    /// less than 6 hours ago.
     static func updateIfNeeded() {
-        guard Date().timeIntervalSince(lastUpdate ?? .distantPast) > interval else { return }
+        let failure = UserDefaults.standard.object(forKey: failedKey) as? Date
+        guard shouldUpdate(now: Date(), lastUpdate: lastUpdate, lastFailure: failure) else { return }
         Task.detached(priority: .background) { await run() }
+    }
+
+    static func shouldUpdate(now: Date, lastUpdate: Date?, lastFailure: Date?) -> Bool {
+        guard now.timeIntervalSince(lastUpdate ?? .distantPast) > interval else { return false }
+        if let lastFailure, now.timeIntervalSince(lastFailure) < retryCooldown { return false }
+        return true
+    }
+
+    /// One page, retried up to `pageAttempts` times with growing waits (5 s, 20 s) when the server errors out.
+    private static func fetchPage(_ page: Int) async throws -> (foods: [Food], oldest: Double?) {
+        var attempt = 1
+        while true {
+            do {
+                return try await OpenFoodFacts.recentlyModifiedInItaly(page: page)
+            } catch {
+                guard attempt < pageAttempts, !Task.isCancelled else { throw error }
+                try await Task.sleep(for: .seconds(5 * attempt * attempt))
+                attempt += 1
+            }
+        }
     }
 
     /// Downloads changed products newest first until it reaches the previous update (or the build date of the
@@ -54,18 +81,20 @@ enum FoodUpdater {
         for page in 1...maxPages {
             if Task.isCancelled { break }
             do {
-                let result = try await OpenFoodFacts.recentlyModifiedInItaly(page: page)
+                let result = try await fetchPage(page)
                 FoodStore.shared.upsert(result.foods)
                 saved += result.foods.count
                 guard let oldest = result.oldest, oldest > since, !result.foods.isEmpty else { break }
             } catch {
-                DebugLog.shared.add("warn", "db", "Aggiornamento interrotto: \(error.localizedDescription)")
+                if !Task.isCancelled { defaults.set(Date(), forKey: failedKey) }
+                DebugLog.shared.add("warn", "db", "Aggiornamento interrotto, riprovo tra qualche ora: \(error.localizedDescription)")
                 return saved
             }
             try? await Task.sleep(for: spacing)
         }
         defaults.set(started, forKey: cursorKey)
         defaults.set(Date(), forKey: lastKey)
+        defaults.removeObject(forKey: failedKey)
         DebugLog.shared.add("info", "db", "Aggiornamento database completato: \(saved) prodotti nuovi o modificati")
         return saved
     }

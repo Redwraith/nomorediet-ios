@@ -21,6 +21,8 @@ final class GymMonitor: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var gym: Gym?
     @Published private(set) var authorization: CLAuthorizationStatus = .notDetermined
     @Published private(set) var inside = false
+    /// iOS can deliver the same region entry twice within a second or two.
+    private var lastEnter: Date?
     private let manager = CLLocationManager()
     private static let key = "gym.v1"
     private static let regionId = "gym"
@@ -76,6 +78,8 @@ final class GymMonitor: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         guard region.identifier == Self.regionId else { return }
+        if let last = lastEnter, Date().timeIntervalSince(last) < 60 { return }
+        lastEnter = Date()
         DebugLog.shared.add("info", "gym", "Arrivato in palestra")
         DispatchQueue.main.async {
             self.inside = true

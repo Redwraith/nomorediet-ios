@@ -830,3 +830,15 @@ final class EquipmentTests: XCTestCase {
         XCTAssertNil(ExerciseSwaps.swap(for: "Test panca", day: "2099-02-10"))
     }
 }
+
+final class FoodUpdaterTests: XCTestCase {
+    func testWaitsAfterAFailedUpdate() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let old = now.addingTimeInterval(-8 * 86400)
+        XCTAssertTrue(FoodUpdater.shouldUpdate(now: now, lastUpdate: nil, lastFailure: nil))
+        XCTAssertTrue(FoodUpdater.shouldUpdate(now: now, lastUpdate: old, lastFailure: nil))
+        XCTAssertFalse(FoodUpdater.shouldUpdate(now: now, lastUpdate: old, lastFailure: now.addingTimeInterval(-60)))
+        XCTAssertTrue(FoodUpdater.shouldUpdate(now: now, lastUpdate: old, lastFailure: now.addingTimeInterval(-7 * 3600)))
+        XCTAssertFalse(FoodUpdater.shouldUpdate(now: now, lastUpdate: now.addingTimeInterval(-86400), lastFailure: nil))
+    }
+}

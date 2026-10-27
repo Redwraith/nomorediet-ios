@@ -87,6 +87,10 @@ enum Sync {
 
     /// Imports weights, steps and energy from Apple Health: read directly when the app has the HealthKit
     /// entitlement, otherwise as sent by the Shortcuts automation (`SendHealthIntent`).
+    /// The last Health error written to the debug log: the same one is logged once per launch, not at every
+    /// return to the app.
+    private static var loggedHealthError: String?
+
     static func importHealth(context: ModelContext) {
         guard ProfileStore.shared.profile.useHealth else { return }
         let viaShortcuts = ShortcutHealth.hasData
@@ -100,13 +104,17 @@ enum Sync {
         }
         HealthBridge.fetch(days: 60) { result in
             if let error = result["error"] as? String {
-                DebugLog.shared.add("error", "health", "Apple Salute: \(error)")
+                if loggedHealthError != error {
+                    loggedHealthError = error
+                    DebugLog.shared.add("error", "health", "Apple Salute: \(error)")
+                }
                 if !viaShortcuts { HealthCache.shared.status = "Non collegata: \(error)" }
                 return
             }
             guard result["weights"] is [[String: Any]] else { return }
             let steps = (result["daily"] as? [String: [String: Double]])?["steps"] ?? [:]
             DebugLog.shared.add("info", "health", "Salute letta: passi su \(steps.count) giorni, oggi \(Int(steps[DayId.today] ?? 0)), pesate \((result["weights"] as? [[String: Any]])?.count ?? 0)")
+            loggedHealthError = nil
             HealthCache.shared.status = "Collegata ✓"
             applyHealth(result, context: context)
         }
