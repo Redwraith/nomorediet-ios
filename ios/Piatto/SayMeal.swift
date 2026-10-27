@@ -117,6 +117,7 @@ struct SayMealCard: View {
         case .gemini: return "Gemini"
         case .glm: return "GLM"
         case .deepseek: return "DeepSeek"
+        case .groq: return "Groq"
         }
     }
 

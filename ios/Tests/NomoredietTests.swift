@@ -863,3 +863,21 @@ final class FoodWordMatchingTests: XCTestCase {
         XCTAssertEqual(MealRecognizer.bestMatch(for: ["farina"], in: [food("Farinata"), food("Farina di frumento")])?.name, "Farina di frumento")
     }
 }
+
+final class GroqProviderTests: XCTestCase {
+    func testGroqIsAFreeOpenAICompatibleProvider() {
+        let groq = OpenAICompatibleAI.provider(.groq)
+        XCTAssertEqual(groq?.name, "Groq")
+        XCTAssertEqual(groq?.free, true)
+        XCTAssertFalse(groq?.visionModels.isEmpty ?? true)
+        XCTAssertLessThan(groq?.maxOutput ?? 0, 4096)
+    }
+
+    func testGroqKeysAreRecognisedOnlyForGroq() {
+        let key = "gsk_" + String(repeating: "a", count: 48)
+        XCTAssertTrue(OpenAICompatibleAI.looksLikeKey(key, for: OpenAICompatibleAI.groq))
+        XCTAssertFalse(OpenAICompatibleAI.looksLikeKey(key, for: OpenAICompatibleAI.glm))
+        XCTAssertFalse(OpenAICompatibleAI.looksLikeKey(key, for: OpenAICompatibleAI.deepseek))
+        XCTAssertFalse(OpenAICompatibleAI.looksLikeKey("AIza" + String(repeating: "a", count: 40), for: OpenAICompatibleAI.groq))
+    }
+}

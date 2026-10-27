@@ -16,8 +16,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios
         PRODUCT_NAME: Nomorediet
-        MARKETING_VERSION: "4.16"
-        CURRENT_PROJECT_VERSION: "54"
+        MARKETING_VERSION: "4.17"
+        CURRENT_PROJECT_VERSION: "55"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -68,8 +68,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.piatto.ios.widgets
         PRODUCT_NAME: NomoredietWidgets
-        MARKETING_VERSION: "4.16"
-        CURRENT_PROJECT_VERSION: "54"
+        MARKETING_VERSION: "4.17"
+        CURRENT_PROJECT_VERSION: "55"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
         CODE_SIGN_ENTITLEMENTS: Widgets/Widgets.entitlements

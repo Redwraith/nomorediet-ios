@@ -57,6 +57,7 @@ struct ProfileTab: View {
                 }
                 Section {
                     Picker("Motore", selection: $ai.settings.engine) {
+                        Text("Groq (gratis, velocissimo, testo e foto)").tag(AIGuard.Engine.groq)
                         Text("GLM di Z.ai (gratis, testo e foto)").tag(AIGuard.Engine.glm)
                         Text("Gemini (gratis, chiave Google)").tag(AIGuard.Engine.gemini)
                         Text("DeepSeek (pochi centesimi, solo testo)").tag(AIGuard.Engine.deepseek)
@@ -105,6 +106,8 @@ struct ProfileTab: View {
                                 .accessibilityIdentifier("compatible-login")
                             Text(provider.engine == .glm
                                  ? "Entri su z.ai (anche con Google), premi \"Create API Key\" e copiala. Tornando qui viene collegata da sola."
+                                 : provider.engine == .groq
+                                 ? "Entri su console.groq.com (anche con Google), premi \"Create API Key\" e copiala. Tornando qui viene collegata da sola."
                                  : "Entri su platform.deepseek.com, crei una chiave e la copi. Tornando qui viene collegata da sola.")
                                 .font(.footnote).foregroundStyle(.secondary)
                             DisclosureGroup("Incolla a mano") {
@@ -145,6 +148,8 @@ struct ProfileTab: View {
                 } header: { Text("Analisi AI") } footer: {
                     Text(ai.settings.engine == .glm
                          ? "GLM di Z.ai è gratuito (modelli Flash, con limiti di velocità): riconosce il cibo da testo, voce e foto. La chiave si crea su z.ai e resta nel portachiavi; testo e foto vanno ai server di Z.ai."
+                         : ai.settings.engine == .groq
+                         ? "Groq è gratuito entro i limiti giornalieri e risponde in pochi secondi: riconosce il cibo da testo, voce e foto (le foto con Llama 4 Scout). La chiave si crea su console.groq.com e resta nel portachiavi; testo e foto vanno ai server di Groq."
                          : ai.settings.engine == .deepseek
                          ? "DeepSeek costa pochi centesimi al mese a consumo (serve una piccola ricarica sul suo sito) e capisce solo testo e voce, non le foto."
                          : ai.settings.engine == .apple
@@ -279,7 +284,7 @@ struct ProfileTab: View {
                 keyStatus = result
                 if result.hasSuffix("✓") { Keychain.save(text); hasKey = true }
             }
-        case .glm, .deepseek:
+        case .glm, .deepseek, .groq:
             if let provider = OpenAICompatibleAI.provider(engine), OpenAICompatibleAI.looksLikeKey(text, for: provider) {
                 waitingForKey = nil
                 connectCompatible(text, provider)

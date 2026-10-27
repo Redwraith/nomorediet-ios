@@ -1,5 +1,8 @@
 # Nomorediet — Novità
 
+## 4.17
+- Nuovo motore AI gratuito e velocissimo: Groq. Profilo → Analisi AI → "Groq" → "Accedi a Groq e collega la chiave": entri su console.groq.com (anche con Google), crei la chiave, la copi e tornando nell'app viene collegata da sola. Testo e voce usano Llama 3.3 70B (con gpt-oss-120b di riserva), le foto Llama 4 Scout. Funziona anche per il coach.
+
 ## 4.16
 - Alimenti sbagliati: "farina" non diventa più "farinata" e "pancake" non diventa più "pane". L'abbinamento considerava uguali due parole con le stesse prime lettere; ora ignora solo la desinenza (uova/uovo, pomodori/pomodoro, arance/arancia). Se nel database non c'è l'alimento che hai detto, l'app usa la stima dell'AI invece di un alimento simile.
 - GLM più veloce quando è sovraccarico: se un modello risponde "troppo traffico" o non risponde entro 45 secondi, l'app passa subito al successivo (glm-4.7-flash, glm-4.5-flash, glm-4-flash) invece di aspettare e riprovare lo stesso. L'attesa con riprovo resta solo sull'ultimo.

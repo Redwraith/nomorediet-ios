@@ -209,7 +209,7 @@ enum CoachAI {
         case .apple: return try await apple(text, situation: situation)
         case .claude: return try await claude(text, history: history, situation: situation)
         case .gemini: return try await gemini(text, history: history, situation: situation)
-        case .glm, .deepseek:
+        case .glm, .deepseek, .groq:
             guard let provider = OpenAICompatibleAI.provider(settings.engine) else { throw FoodAI.Failure.server("motore non disponibile") }
             let parsed = try await OpenAICompatibleAI.chat(system: system + "\n\nDATI DI OGGI:\n" + situation, schema: schema(gemini: false),
                                                            history: history.map { (user: $0.fromUser, text: $0.text) }, text: text, provider: provider)

@@ -17,6 +17,9 @@ enum OpenAICompatibleAI {
         let textModels: [String]
         let visionModels: [String]
         let free: Bool
+        /// Upper bound of the reply's tokens. Groq's free plan counts it against the per-minute token limit
+        /// together with the prompt, so a smaller bound keeps a request under that limit.
+        var maxOutput = 4096
 
         var base: String {
             let saved = UserDefaults.standard.string(forKey: "ai.base." + keyService)
@@ -33,10 +36,19 @@ enum OpenAICompatibleAI {
                                    keyService: "app.piatto.ios.deepseek", keyPage: URL(string: "https://platform.deepseek.com/api_keys")!,
                                    textModels: ["deepseek-chat"], visionModels: [], free: false)
 
+    /// Groq: free plan, very fast inference. Llama 3.3 70B first for text, gpt-oss-120b as the fallback, Llama 4 Scout
+    /// for photos. A model Groq no longer serves is skipped like any other the account cannot use.
+    static let groq = Provider(engine: .groq, name: "Groq", bases: ["https://api.groq.com/openai/v1"],
+                               keyService: "app.piatto.ios.groq", keyPage: URL(string: "https://console.groq.com/keys")!,
+                               textModels: ["llama-3.3-70b-versatile", "openai/gpt-oss-120b"],
+                               visionModels: ["meta-llama/llama-4-scout-17b-16e-instruct"],
+                               free: true, maxOutput: 1500)
+
     static func provider(_ engine: AIGuard.Engine) -> Provider? {
         switch engine {
         case .glm: glm
         case .deepseek: deepseek
+        case .groq: groq
         default: nil
         }
     }
@@ -50,6 +62,7 @@ enum OpenAICompatibleAI {
         switch p.engine {
         case .glm: return t.contains(".") && !t.hasPrefix("sk-") && !t.hasPrefix("AIza")
         case .deepseek: return t.hasPrefix("sk-") && !t.hasPrefix("sk-ant-")
+        case .groq: return t.hasPrefix("gsk_")
         default: return false
         }
     }
@@ -124,7 +137,7 @@ enum OpenAICompatibleAI {
         do {
             (text, _) = try await complete(provider: p, key: key, models: models,
                                            messages: [["role": "system", "content": system], ["role": "user", "content": content]],
-                                           json: true, maxTokens: 4096)
+                                           json: true, maxTokens: min(4096, p.maxOutput))
         } catch {
             outcome = "errore"
             throw error
@@ -150,7 +163,7 @@ enum OpenAICompatibleAI {
         defer { guardian.end() }
         var outcome = "errore"
         defer { guardian.record(inputTokens: 0, outputTokens: 0, outcome: "\(p.name) coach · " + outcome, costUSD: 0) }
-        let (reply, _) = try await complete(provider: p, key: key, models: p.textModels, messages: messages, json: true, maxTokens: 2048)
+        let (reply, _) = try await complete(provider: p, key: key, models: p.textModels, messages: messages, json: true, maxTokens: min(2048, p.maxOutput))
         guard let parsed = jsonObject(in: reply) else { outcome = "non leggibile"; throw FoodAI.Failure.server("risposta di \(p.name) non leggibile, riprova.") }
         outcome = "ok"
         return parsed
