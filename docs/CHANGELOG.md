@@ -1,5 +1,9 @@
 # Nomorediet — Novità
 
+## 4.16
+- Alimenti sbagliati: "farina" non diventa più "farinata" e "pancake" non diventa più "pane". L'abbinamento considerava uguali due parole con le stesse prime lettere; ora ignora solo la desinenza (uova/uovo, pomodori/pomodoro, arance/arancia). Se nel database non c'è l'alimento che hai detto, l'app usa la stima dell'AI invece di un alimento simile.
+- GLM più veloce quando è sovraccarico: se un modello risponde "troppo traffico" o non risponde entro 45 secondi, l'app passa subito al successivo (glm-4.7-flash, glm-4.5-flash, glm-4-flash) invece di aspettare e riprovare lo stesso. L'attesa con riprovo resta solo sull'ultimo.
+
 ## 4.15
 - Aggiornamento del database alimenti: se Open Food Facts è giù o sovraccarico l'app riprova ogni pagina 3 volte con attese crescenti e poi si ferma per 6 ore, invece di richiamare il server a ogni apertura dell'app. "Aggiorna ora" in Profilo continua a funzionare quando vuoi.
 - Pannello di debug più pulito: l'errore di Apple Salute (per esempio il permesso mancante dopo l'installazione con SideStore) compare una volta per avvio e non a ogni apertura, e l'arrivo in palestra non viene più scritto due volte.

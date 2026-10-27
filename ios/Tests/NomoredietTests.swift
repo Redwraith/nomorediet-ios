@@ -842,3 +842,24 @@ final class FoodUpdaterTests: XCTestCase {
         XCTAssertFalse(FoodUpdater.shouldUpdate(now: now, lastUpdate: now.addingTimeInterval(-86400), lastFailure: nil))
     }
 }
+
+final class FoodWordMatchingTests: XCTestCase {
+    private func food(_ name: String) -> Food {
+        Food(name: name, per100: Nutrients(kcal: 100), portion: 100, portionName: "porzione")
+    }
+
+    func testOnlyTheEndingOfAWordCanDiffer() {
+        XCTAssertTrue(MealRecognizer.same("uova", "uovo"))
+        XCTAssertTrue(MealRecognizer.same("pomodori", "pomodoro"))
+        XCTAssertTrue(MealRecognizer.same("arance", "arancia"))
+        XCTAssertTrue(MealRecognizer.same("pancakes", "pancake"))
+        XCTAssertFalse(MealRecognizer.same("farina", "farinata"))
+        XCTAssertFalse(MealRecognizer.same("pancake", "pane"))
+    }
+
+    func testFlourAndPancakeAreNotMatchedToOtherFoods() {
+        XCTAssertNil(MealRecognizer.bestMatch(for: ["farina"], in: [food("Farinata"), food("Farinata di ceci")]))
+        XCTAssertNil(MealRecognizer.bestMatch(for: ["pancake"], in: [food("Pane comune"), food("Pane integrale")]))
+        XCTAssertEqual(MealRecognizer.bestMatch(for: ["farina"], in: [food("Farinata"), food("Farina di frumento")])?.name, "Farina di frumento")
+    }
+}

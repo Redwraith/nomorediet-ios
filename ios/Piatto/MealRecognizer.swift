@@ -288,10 +288,18 @@ enum MealRecognizer {
         return best?.0
     }
 
-    /// Same word ignoring Italian singular/plural endings: "uova" ≈ "uovo", "pomodori" ≈ "pomodoro".
-    static func same(_ a: String, _ b: String) -> Bool {
-        func stem(_ w: String) -> String { String(w.prefix(max(3, min(6, w.count - 1)))) }
-        return a.hasPrefix(stem(b)) || b.hasPrefix(stem(a))
+    /// Same word ignoring singular/plural endings: "uova" ≈ "uovo", "pomodori" ≈ "pomodoro", "arance" ≈ "arancia",
+    /// "pancakes" ≈ "pancake". Only the ending is dropped: "farina" is not "farinata" and "pancake" is not "pane".
+    static func same(_ a: String, _ b: String) -> Bool { a == b || stem(a) == stem(b) }
+
+    static func stem(_ word: String) -> String {
+        var w = word
+        if w.count > 4, w.hasSuffix("s") { w.removeLast() }
+        for ending in ["ia", "ie", "io", "a", "e", "i", "o"] where w.count > ending.count + 2 && w.hasSuffix(ending) {
+            w.removeLast(ending.count)
+            break
+        }
+        return w
     }
 }
 

@@ -158,17 +158,20 @@ enum OpenAICompatibleAI {
 
     // MARK: Transport
 
-    /// One chat completion; tries the next model when the account cannot use one, retries on overload.
+    /// One chat completion; tries the next model when the account cannot use one or the model is overloaded or
+    /// slow, and waits and retries on overload only for the last model (waiting on a busy free model while
+    /// another is available is what made the answer slow).
     static func complete(provider p: Provider, key: String, models: [String], base: String? = nil, messages: [[String: Any]],
                          json: Bool, maxTokens: Int) async throws -> (String, String) {
         var lastError: Error = FoodAI.Failure.server("\(p.name) non ha risposto.")
-        for model in models {
+        for (index, model) in models.enumerated() {
+            let hasNext = index < models.count - 1
             var body: [String: Any] = ["model": model, "messages": messages, "max_tokens": maxTokens, "temperature": 0.2, "stream": false]
             if json { body["response_format"] = ["type": "json_object"] }
             if p.engine == .glm { body["thinking"] = ["type": "disabled"] }
             var request = URLRequest(url: URL(string: (base ?? p.base) + "/chat/completions")!)
             request.httpMethod = "POST"
-            request.timeoutInterval = 90
+            request.timeoutInterval = p.visionModels.contains(model) ? 60 : 45
             request.setValue("application/json", forHTTPHeaderField: "content-type")
             request.setValue("Bearer \(key)", forHTTPHeaderField: "authorization")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -176,6 +179,7 @@ enum OpenAICompatibleAI {
                 let data: Data, response: URLResponse
                 do { (data, response) = try await URLSession.shared.data(for: request) } catch {
                     lastError = FoodAI.Failure.network(error.localizedDescription)
+                    if hasNext { break }
                     if attempt < AIGuard.maxAttempts { try await Task.sleep(for: .seconds(AIGuard.backoff(attempt: attempt, retryAfter: nil))); continue }
                     throw lastError
                 }
@@ -196,16 +200,16 @@ enum OpenAICompatibleAI {
                     throw Unauthorized(provider: p.name, detail: "HTTP \(status)\(code): \(text.prefix(120))")
                 case 402: throw FoodAI.Failure.server("credito \(p.name) esaurito.")
                 case 500, 502, 503, 504:
-                    if attempt < AIGuard.maxAttempts {
+                    if !hasNext, attempt < AIGuard.maxAttempts {
                         try await Task.sleep(for: .seconds(AIGuard.backoff(attempt: attempt, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "retry-after"))))
                         continue
                     }
-                    throw FoodAI.Failure.server("\(p.name) è sovraccarico, riprova tra poco.")
+                    lastError = FoodAI.Failure.server("\(p.name) è sovraccarico, riprova tra poco.")
                 case 429:
                     // Z.ai answers 429 both for "too fast" (worth waiting) and for a model the account has no
                     // quota for (code 1113, waiting is useless): then the next free model is tried at once.
                     let code = (error?["code"]).map { "\($0)" } ?? ""
-                    if code != "1113", attempt < AIGuard.maxAttempts {
+                    if code != "1113", !hasNext, attempt < AIGuard.maxAttempts {
                         try await Task.sleep(for: .seconds(AIGuard.backoff(attempt: attempt, retryAfter: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "retry-after"))))
                         continue
                     }
