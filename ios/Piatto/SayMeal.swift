@@ -80,7 +80,7 @@ struct SayMealCard: View {
                     Label(listening ? "Ti ascolto…" : "Tieni premuto e parla", systemImage: listening ? "waveform" : "mic.fill")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.bordered)
+                .glassButton()
                 .tint(listening ? .red : Theme.accent)
                 .simultaneousGesture(DragGesture(minimumDistance: 0)
                     .onChanged { _ in if !listening { startListening() } }
@@ -106,11 +106,11 @@ struct SayMealCard: View {
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private var engineLabel: String {
-        AIRouter.engines(for: .text).first.map(AIRouter.name) ?? "Nomorediet"
+        AIRouter.engines(for: .text).first.map(AIRouter.name) ?? "Tempra"
     }
 
     private func startListening() {

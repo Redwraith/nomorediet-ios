@@ -916,3 +916,102 @@ final class AIRouterTests: XCTestCase {
         XCTAssertTrue(try JSONDecoder().decode(AIGuard.Settings.self, from: Data(free.utf8)).auto)
     }
 }
+
+final class PlanBuilderTests: XCTestCase {
+    private func item(_ name: String, paired: Bool = false) -> PlanDraft.Item {
+        PlanDraft.Item(name: name, pattern: "push_h", cue: "", sets: 4, repsMin: 8, repsMax: 12, rest: 75, paired: paired)
+    }
+
+    func testBuildKeepsSetsRepsAndPairs() {
+        let days = PlanDraft.build([PlanDraft.Day(name: "Petto", items: [item("Chest press", paired: true), item("Lat machine"), item("Curl")])])
+        XCTAssertEqual(days.count, 1)
+        XCTAssertEqual(days[0].blocks.map(\.label), ["A", "B"])
+        XCTAssertEqual(days[0].blocks[0].exercises.map(\.name), ["Chest press", "Lat machine"])
+        XCTAssertEqual(days[0].blocks[1].exercises.map(\.name), ["Curl"])
+        XCTAssertEqual(days[0].blocks[0].exercises[0].sets, 4)
+        XCTAssertEqual(days[0].blocks[0].exercises[0].reps, "8–12")
+        XCTAssertEqual(days[0].blocks[0].restSeconds, 75)
+    }
+
+    func testBuildSkipsEmptyDaysAndDuplicates() {
+        let days = PlanDraft.build([PlanDraft.Day(name: "A", items: [item("Curl"), item("curl")]), PlanDraft.Day(name: "Vuoto"),
+                                    PlanDraft.Day(name: "a", items: [item("Row")])])
+        XCTAssertEqual(days.count, 2)
+        XCTAssertEqual(days[0].blocks.flatMap(\.exercises).count, 1)
+        XCTAssertNotEqual(days[0].name.lowercased(), days[1].name.lowercased())
+    }
+
+    func testDraftRoundTrip() {
+        let built = PlanDraft.build([PlanDraft.Day(name: "Gambe", items: [item("Leg press 45°", paired: true), item("Leg curl seduto")])])
+        XCTAssertEqual(PlanDraft.build(PlanDraft.draft(from: built)), built)
+    }
+}
+
+final class AutoProgressTests: XCTestCase {
+    private let exercise = Exercise(name: "Chest press alla macchina", pattern: "push_h", sets: 3, reps: "8–12", rir: "1–2", cue: "", stretch: "")
+    private func session(_ day: String, _ kg: Double, _ reps: [Int]) -> AutoProgress.Session {
+        AutoProgress.Session(day: day, sets: reps.map { (kg: kg, reps: $0) })
+    }
+
+    func testFirstTimeHasNoLoad() {
+        XCTAssertEqual(AutoProgress.target(exercise, history: []).kind, .first)
+    }
+
+    func testMoreRepsBeforeMoreLoad() {
+        let t = AutoProgress.target(exercise, history: [session("2026-01-01", 40, [10, 9, 9])])
+        XCTAssertEqual(t.kind, .moreReps)
+        XCTAssertEqual(t.kg, 40)
+        XCTAssertEqual(t.reps, 10)
+    }
+
+    func testLoadGoesUpWhenEverySetIsAtTheTop() {
+        let t = AutoProgress.target(exercise, history: [session("2026-01-01", 40, [12, 12, 12])])
+        XCTAssertEqual(t.kind, .moreLoad)
+        XCTAssertEqual(t.kg, 42.5)
+        XCTAssertEqual(t.reps, 8)
+    }
+
+    func testFewerSetsThanPlannedDoNotRaiseTheLoad() {
+        XCTAssertEqual(AutoProgress.target(exercise, history: [session("2026-01-01", 40, [12, 12])]).kind, .moreReps)
+    }
+
+    func testThreeFlatSessionsRestartLighter() {
+        let t = AutoProgress.target(exercise, history: [session("2026-01-01", 40, [10, 9, 9]), session("2026-01-04", 40, [10, 9, 8]),
+                                                         session("2026-01-08", 40, [10, 9, 9])])
+        XCTAssertEqual(t.kind, .restart)
+        XCTAssertEqual(t.kg, 35)
+    }
+
+    func testDumbbellsStepByTwo() {
+        XCTAssertEqual(AutoProgress.step(for: "Panca piana manubri presa neutra", kg: 24), 2)
+        XCTAssertEqual(AutoProgress.step(for: "Alzate laterali al cavo", kg: 6), 1)
+    }
+
+    func testSessionsLeaveTodayOut() {
+        let s = AutoProgress.sessions([(day: "2026-01-01", kg: 40, reps: 10), (day: "2026-01-01", kg: 40, reps: 9), (day: "2026-01-05", kg: 40, reps: 11)],
+                                      before: "2026-01-05")
+        XCTAssertEqual(s.count, 1)
+        XCTAssertEqual(s[0].topReps.sorted(), [9, 10])
+    }
+}
+
+final class TrendTests: XCTestCase {
+    func testTrendWeightIgnoresOneOddDay() {
+        let start = DayId.date("2026-01-01")
+        let kgs = [84.0, 84.0, 86.0, 84.0, 84.0]
+        let points = kgs.enumerated().map { (Calendar.current.date(byAdding: .day, value: $0.offset, to: start)!, $0.element) }
+        let trend = Nutrition.smoothed(points)
+        XCTAssertEqual(trend.count, 5)
+        XCTAssertEqual(trend[2].1, 84.2, accuracy: 0.001)
+        XCTAssertLessThan(trend[4].1, 84.2)
+    }
+
+    func testMaintenanceChangesSlowly() {
+        let now = Date()
+        XCTAssertEqual(Nutrition.limited(2600, previous: nil, changedAt: nil, now: now), 2600)
+        XCTAssertEqual(Nutrition.limited(2600, previous: 2300, changedAt: now.addingTimeInterval(-2 * 86400), now: now), 2300)
+        XCTAssertEqual(Nutrition.limited(2600, previous: 2300, changedAt: now.addingTimeInterval(-8 * 86400), now: now), 2450)
+        XCTAssertEqual(Nutrition.limited(2000, previous: 2300, changedAt: nil, now: now), 2150)
+        XCTAssertNil(Nutrition.limited(nil, previous: 2300, changedAt: nil, now: now))
+    }
+}

@@ -190,7 +190,7 @@ enum CoachContext {
 
 enum CoachAI {
     static let system = """
-    Sei il coach di Nomorediet: personal trainer e nutrizionista sportivo. Parli in italiano, in modo diretto, \
+    Sei il coach di Tempra: personal trainer e nutrizionista sportivo. Parli in italiano, in modo diretto, \
     motivante e concreto, come in una chat vocale: frasi brevi, niente elenchi lunghi, niente markdown, al massimo \
     5-6 frasi. Basati sui dati dell'utente qui sotto. Non dare diagnosi mediche.
     "sets" serve SOLO quando, nel suo ULTIMO messaggio, l'utente elenca esercizi fatti con i numeri (chili, serie, \
@@ -468,7 +468,7 @@ struct CoachChatView: View {
             if let voiceError { Text(voiceError).font(.caption).foregroundStyle(.red).padding(.horizontal) }
             inputBar
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(AppBackground())
         .navigationTitle("Chat con il coach")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -496,11 +496,11 @@ struct CoachChatView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
             ForEach(["Cosa mangio a cena per arrivare alle proteine?", "Oggi panca 60 kg 4x8 e lat machine 55 kg 3x10, mi sentivo carico", "Come sto andando questa settimana?"], id: \.self) { example in
                 Button(example) { Task { await chat.send(example, context: context, spoken: false) } }
-                    .font(.caption).buttonStyle(.bordered)
+                    .font(.caption).glassButton()
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private func bubble(_ m: ChatMessage) -> some View {
@@ -533,8 +533,8 @@ struct CoachChatView: View {
             }
             if m.resolution == nil {
                 HStack {
-                    Button("Salva") { chat.resolve(m.id, save: true, context: context) }.buttonStyle(.borderedProminent)
-                    Button("No") { chat.resolve(m.id, save: false, context: context) }.buttonStyle(.bordered)
+                    Button("Salva") { chat.resolve(m.id, save: true, context: context) }.glassProminentButton()
+                    Button("No") { chat.resolve(m.id, save: false, context: context) }.glassButton()
                 }
                 .controlSize(.small)
             }
@@ -550,7 +550,7 @@ struct CoachChatView: View {
                 .lineLimit(1...5)
                 .focused($typing)
                 .padding(.horizontal, 12).padding(.vertical, 9)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
+                .glassCard(20)
             if draft.isEmpty {
                 // hold to talk: the transcript is sent and the coach answers aloud
                 Image(systemName: listening ? "waveform.circle.fill" : "mic.circle.fill")

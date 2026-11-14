@@ -82,7 +82,15 @@ enum Sync {
         var profile = ProfileStore.shared.profile
         profile.adaptiveTDEE = nil
         let formula = Nutrition.maintenance(profile)
-        ProfileStore.shared.profile.adaptiveTDEE = Nutrition.adaptiveTDEE(intakes: Array(byDay.values), weights: weights, formula: formula)
+        let previous = ProfileStore.shared.profile.adaptiveTDEE
+        let fresh = Nutrition.adaptiveTDEE(intakes: Array(byDay.values), weights: weights, formula: formula)
+        let next = Nutrition.limited(fresh, previous: previous, changedAt: UserDefaults.standard.object(forKey: "adaptive.changedAt") as? Date)
+        guard next != previous else { return }
+        UserDefaults.standard.set(Date(), forKey: "adaptive.changedAt")
+        ProfileStore.shared.profile.adaptiveTDEE = next
+        if let previous, let next {
+            DebugLog.shared.add("info", "calorie", "Mantenimento stimato: da \(Int(previous)) a \(Int(next)) kcal")
+        }
     }
 
     /// Imports weights, steps and energy from Apple Health: read directly when the app has the HealthKit

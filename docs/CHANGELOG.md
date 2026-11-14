@@ -1,4 +1,12 @@
-# Nomorediet — Novità
+# Tempra — Novità
+
+## 5.0
+- Nuovo nome: l'app ora si chiama Tempra. Dati, sorgente di SideStore e comandi rapidi restano gli stessi (il comando "Nomorediet Salute" continua a funzionare).
+- Nuova grafica "vetro": sfondo sfumato, schede traslucide e, da iOS 26, Liquid Glass sulle schede principali e sui pulsanti. Testi e numeri restano ad alto contrasto, in chiaro e in scuro.
+- La mia scheda: in Allenamento → "Costruisci la mia scheda" crei i giorni che vuoi e per ogni esercizio scegli serie, ripetizioni, recupero e se alternarlo in jump set con quello sotto. Gli esercizi si scelgono per gruppo muscolare (i tuoi preferiti in cima, mai quelli che eviti), dal catalogo completo o scrivendo il nome. Nessuno schema imposto: niente fondamentali, onda 3-4-5 o mesi del ciclo. Puoi partire copiando la scheda attuale.
+- La scheda si migliora da sola: a ogni allenamento trovi già scritti carico e ripetizioni. Prima una ripetizione in più a parità di carico; quando tutte le serie arrivano in cima all'intervallo sale il carico (2 kg con i manubri, 2,5 kg altrimenti) e riparti dal basso; dopo 3 sedute ferme, ripartenza più leggera del 10%. In Allenamento vedi quali esercizi stanno per salire e quali sono fermi.
+- Peso di tendenza: nel grafico del peso la linea è la media che ignora gli sbalzi di acqua e cibo; i puntini sono le singole pesate.
+- Calorie che si correggono da sole senza ballare: il mantenimento stimato da cibo e peso cambia al massimo una volta a settimana e di 150 kcal per volta.
 
 ## 4.18
 - Scelta automatica del motore AI: ogni compito usa il motore gratuito migliore tra quelli che hai collegato. Foto: Gemini, poi Groq, GLM e il modello dell'iPhone. Testo e voce: Groq, poi Gemini, GLM e iPhone. Coach: Groq, poi Gemini, GLM e iPhone. Se un motore è sovraccarico, finito di quota o non risponde, l'app passa da sola al successivo senza perdere la richiesta. "Nessun cibo nella foto", il limite giornaliero e il budget non fanno cambiare motore.

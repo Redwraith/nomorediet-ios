@@ -176,7 +176,7 @@ struct SupplementsCard: View {
             .id(refresh)
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 }
 

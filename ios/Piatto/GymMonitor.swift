@@ -197,7 +197,7 @@ struct GymSettingsView: View {
             }
             if monitor.gym != nil && monitor.authorization != .authorizedAlways {
                 Section {
-                    Label("Per accorgermi che arrivi anche ad app chiusa, in Impostazioni → Nomorediet → Posizione scegli \"Sempre\".",
+                    Label("Per accorgermi che arrivi anche ad app chiusa, in Impostazioni → Tempra → Posizione scegli \"Sempre\".",
                           systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(.orange)
                     Button("Apri Impostazioni") {
                         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }

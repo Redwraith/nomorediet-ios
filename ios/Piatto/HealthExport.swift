@@ -223,13 +223,13 @@ struct HealthExportImportView: View {
     var body: some View {
         List {
             Section {
-                Text("L'app Salute può esportare tutti i tuoi dati in un file. Nomorediet lo legge tutto: passi, calorie, distanza, minuti di esercizio, piani, sonno, battito, HRV, VO₂ max, grasso corporeo e tutte le pesate di sempre, da iPhone e Apple Watch.")
+                Text("L'app Salute può esportare tutti i tuoi dati in un file. Tempra lo legge tutto: passi, calorie, distanza, minuti di esercizio, piani, sonno, battito, HRV, VO₂ max, grasso corporeo e tutte le pesate di sempre, da iPhone e Apple Watch.")
                     .font(.subheadline)
             }
             Section("Come fare") {
                 Label("Apri Salute e tocca la tua foto in alto a destra", systemImage: "1.circle")
                 Label("Scorri in fondo: \"Esporta tutti i dati sanitari\" → Esporta (ci vuole qualche minuto)", systemImage: "2.circle")
-                Label("Nel foglio di condivisione che si apre tocca Nomorediet: l'importazione parte da sola", systemImage: "3.circle")
+                Label("Nel foglio di condivisione che si apre tocca Tempra: l'importazione parte da sola", systemImage: "3.circle")
                 Label("Oppure salvalo in File e qui sotto scegli export.zip (o export.xml)", systemImage: "4.circle")
             }
             .font(.subheadline)

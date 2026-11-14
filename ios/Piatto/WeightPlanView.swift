@@ -157,7 +157,7 @@ struct HealthTodayCard: View {
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     @ViewBuilder private func tile(_ title: String, _ value: String?, _ icon: String, _ color: Color) -> some View {

@@ -52,7 +52,7 @@ struct TodayView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(AppBackground())
             .navigationTitle(DayId.label(app.day))
             .onChange(of: dayEntries.count) { _, _ in Sync.afterFoodChange(context: context, day: app.day) }
         }
@@ -108,7 +108,7 @@ struct TodayView: View {
                 Text(title).font(.caption2).multilineTextAlignment(.center).lineLimit(2)
             }
             .frame(maxWidth: .infinity, minHeight: 64)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            .glassCard(14)
         }
         .buttonStyle(.plain)
         .foregroundStyle(Theme.accent)
@@ -136,7 +136,7 @@ struct TodayView: View {
                                 Text("\(meal.kcal.it()) kcal").font(.caption).foregroundStyle(.secondary)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+                            .glassCard(14)
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
@@ -177,7 +177,7 @@ struct TodayView: View {
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     /// An empty meal can be filled in one tap: the same as yesterday, or a size estimate.
@@ -209,7 +209,7 @@ struct TodayView: View {
                     }
                 }
                 .font(.footnote)
-                .buttonStyle(.bordered)
+                .glassButton()
                 .controlSize(.small)
             }
         }
@@ -225,7 +225,7 @@ struct TodayView: View {
                 Image(systemName: "chevron.right").foregroundStyle(.tertiary)
             }
             .padding(14)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .glassCard(18)
         }
         .buttonStyle(.plain)
     }
@@ -288,7 +288,7 @@ struct RingsCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 22))
+        .glassCard(22, hero: true)
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: totals)
     }
 }
@@ -368,7 +368,7 @@ struct MicronutrientsCard: View {
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private func row(_ name: String, _ value: Double, _ goal: Double, _ unit: String, _ color: Color) -> some View {
@@ -394,10 +394,4 @@ struct BigButton: View {
         }
         .buttonStyle(.plain)
     }
-}
-
-enum Theme {
-    static let accent = Color(red: 0.30, green: 0.72, blue: 0.50)
-    static let background = Color(uiColor: .systemGroupedBackground)
-    static let card = Color(uiColor: .secondarySystemGroupedBackground)
 }

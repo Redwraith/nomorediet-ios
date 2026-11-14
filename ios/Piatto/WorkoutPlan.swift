@@ -48,11 +48,12 @@ struct Reference: Hashable {
 }
 
 enum WorkoutPlan {
-    /// The plan in use: the user's Google Calendar plan, or Nomorediet's shoulder-and-back plan.
+    /// The plan in use: the user's Google Calendar plan, or Tempra's shoulder-and-back plan.
     static var days: [WorkoutDay] { PlanStore.shared.days }
     static var name: String { PlanStore.shared.name }
     static var meta: String {
-        PlanStore.shared.source == .calendar
+        PlanStore.shared.isCustom ? "\(days.count) sedute costruite da te · carichi e ripetizioni si aggiornano da soli dopo ogni allenamento"
+            : PlanStore.shared.source == .calendar
             ? "\(days.count) sedute a settimana · esercizi a coppie in jump set · dropset dove indicato"
             : "4 sedute da circa 55–60 minuti · priorità a spalle e dorso · esercizi a coppie in jump set · enfasi sul muscolo in allungamento"
     }
@@ -188,7 +189,7 @@ enum WorkoutPlan {
         Reference(first: "Brummer", year: "2026", journal: "Front Public Health", doi: "10.3389/fpubh.2026.1872337", finding: "Strategie per allenarsi in meno tempo, superset compresi, mantenendo l'efficacia."),
     ]
 
-    /// Exercises Nomorediet adds to the last session of the Calendar plan (femorali/glutei had only 4).
+    /// Exercises Tempra adds to the last session of the Calendar plan (femorali/glutei had only 4).
     static let lastDayExtras: [ExerciseBlock] = [
         ExerciseBlock(label: "3", restSeconds: 75, exercises: [
             role(e("Leg curl singolo con ginocchio appoggiato", "leg_curl", 3, "10–12", "1", "Una gamba alla volta, ginocchio sul cuscino, bacino fermo.", "Lascia distendere completamente il ginocchio."), .isolamento),
@@ -216,7 +217,12 @@ enum WorkoutPlan {
     }
 
     static func totalSets(_ day: WorkoutDay, phase: Progression.Phase) -> Int {
-        day.blocks.flatMap(\.exercises).reduce(0) { $0 + SetWave.apply(Progression.apply($1, phase: phase), phase: phase).sets }
+        day.blocks.flatMap(\.exercises).reduce(0) { $0 + prescribed($1, phase: phase).sets }
+    }
+
+    /// Sets and reps to do today: the user's own plan is used as written, the others follow the cycle and the set wave.
+    static func prescribed(_ exercise: Exercise, phase: Progression.Phase) -> Exercise {
+        PlanStore.shared.isCustom ? exercise : SetWave.apply(Progression.apply(exercise, phase: phase), phase: phase)
     }
 
     /// Names a day's sets can be logged under on `logDay`: the plan exercise, its alternatives, the swap used that day.
@@ -759,7 +765,7 @@ struct MovementFigure: View {
     }
 }
 
-/// Simone's preferences, applied to any plan (Calendar or Nomorediet) and to the swap lists:
+/// Simone's preferences, applied to any plan (Calendar or Tempra) and to the swap lists:
 /// no squat, lunges, hip thrust, calf raises or ab work; rows and pulldowns on cables; his favourite variants first.
 enum Preferences {
     private static let disliked = ["squat", "affondi", "lunge", "split squat", "bulgaro", "step-up", "hip thrust", "glute bridge",

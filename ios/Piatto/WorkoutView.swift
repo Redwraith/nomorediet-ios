@@ -14,6 +14,7 @@ struct WorkoutTab: View {
     @State private var syncing = false
     @State private var syncMessage: String?
     @State private var showHistory = false
+    @State private var showBuilder = false
 
     /// A choice made today with the arrows ("I skipped A1, go back to it").
     @AppStorage("workout.pick." + DayId.today) private var pick = -1
@@ -37,13 +38,14 @@ struct WorkoutTab: View {
                         Text(WorkoutPlan.name).font(.title2.bold())
                         Text(WorkoutPlan.meta).font(.subheadline).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Label(Progression.title(), systemImage: "chart.line.uptrend.xyaxis")
+                        Label(plan.isCustom ? "Progressione automatica: prima più ripetizioni, poi più carico" : Progression.title(),
+                              systemImage: "chart.line.uptrend.xyaxis")
                             .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     todayCard
-                    waveCard
+                    if plan.isCustom { autoCard } else { waveCard }
                     planSourceCard
                     ForEach(WorkoutPlan.days) { day in
                         NavigationLink(value: day) {
@@ -66,12 +68,12 @@ struct WorkoutTab: View {
                         .padding(.top, 8)
                     }
                     .padding(14)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                    .glassCard(18)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(AppBackground())
             .navigationTitle("Allenamento")
             .navigationDestination(for: WorkoutDay.self) { WorkoutDayView(day: $0) }
             .onAppear(perform: openIfAsked)
@@ -79,6 +81,7 @@ struct WorkoutTab: View {
             .onChange(of: app.openWorkout) { _, _ in openIfAsked() }
             .sheet(isPresented: $showTimer) { TimerSheet().presentationDetents([.medium]) }
             .sheet(isPresented: $showHistory) { SetHistoryView() }
+            .sheet(isPresented: $showBuilder) { PlanBuilderView() }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showTimer = true } label: { Image(systemName: "timer") }.accessibilityLabel("Timer")
@@ -87,7 +90,7 @@ struct WorkoutTab: View {
                     Button { showHistory = true } label: { Image(systemName: "clock.arrow.circlepath") }.accessibilityLabel("Storico serie: modifica o elimina")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(item: WorkoutPlan.text, subject: Text("Scheda Nomorediet"), preview: SharePreview(WorkoutPlan.name)) {
+                    ShareLink(item: WorkoutPlan.text, subject: Text("Scheda Tempra"), preview: SharePreview(WorkoutPlan.name)) {
                         Image(systemName: "square.and.arrow.up")
                     }
                 }
@@ -117,16 +120,16 @@ struct WorkoutTab: View {
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 if pick >= 0 {
-                    Button("Torna al suggerito") { pick = -1 }.buttonStyle(.bordered).controlSize(.small)
+                    Button("Torna al suggerito") { pick = -1 }.glassButton().controlSize(.small)
                 }
                 Spacer()
                 Button { path = [nextDay] } label: { Label("Inizia", systemImage: "play.fill") }
-                    .buttonStyle(.borderedProminent)
+                    .glassProminentButton()
                     .accessibilityIdentifier("workout-start")
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18, hero: true)
     }
 
     private func choose(_ index: Int) {
@@ -149,16 +152,57 @@ struct WorkoutTab: View {
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
+    }
+
+    /// What the automatic progression will do next time, from the sets logged so far.
+    private var autoCard: some View {
+        let summary = AutoProgress.summary(days: WorkoutPlan.days,
+                                           logs: logs.map { (day: $0.day, exercise: $0.exercise, kg: $0.kg, reps: $0.reps) })
+        return VStack(alignment: .leading, spacing: 8) {
+            Label("La scheda si aggiorna da sola", systemImage: "wand.and.stars").font(.subheadline.weight(.semibold))
+            if summary.tracked == 0 {
+                Text("Segna le serie del primo allenamento: dalla volta dopo trovi già scritti carico e ripetizioni da fare.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                if !summary.up.isEmpty {
+                    Label("Sale il carico: " + summary.up.joined(separator: ", "), systemImage: "arrow.up.circle.fill")
+                        .font(.caption).foregroundStyle(Theme.accent)
+                }
+                if !summary.stuck.isEmpty {
+                    Label("Fermi da 3 sedute (ripartenza più leggera): " + summary.stuck.joined(separator: ", "), systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                if summary.up.isEmpty && summary.stuck.isEmpty {
+                    Text("Per ora stesso carico e una ripetizione in più per serie: quando tutte le serie arrivano al massimo, sale il carico.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .glassCard(18)
     }
 
     private var planSourceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Scheda", selection: $plan.source) {
-                Text("Dal mio Calendario").tag(PlanStore.Source.calendar)
-                Text("Nomorediet").tag(PlanStore.Source.nomorediet)
+                Text("Calendario").tag(PlanStore.Source.calendar)
+                Text("Tempra").tag(PlanStore.Source.nomorediet)
+                Text("La mia").tag(PlanStore.Source.custom)
             }
             .pickerStyle(.segmented)
+            Button { showBuilder = true } label: {
+                Label(plan.customDays.isEmpty ? "Costruisci la mia scheda" : "Modifica la mia scheda", systemImage: "slider.horizontal.3")
+                    .frame(maxWidth: .infinity)
+            }
+            .glassProminentButton()
+            .accessibilityIdentifier("plan-builder")
+            if plan.source == .custom && plan.customDays.isEmpty {
+                Text("Non hai ancora una tua scheda: costruiscila, intanto vedi quella di Tempra.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             if plan.source == .calendar {
                 HStack {
                     Text(plan.importedAt.map { "Aggiornata dal Calendario il \($0.formatted(date: .abbreviated, time: .shortened))" }
@@ -171,13 +215,13 @@ struct WorkoutTab: View {
                     } label: {
                         if syncing { ProgressView() } else { Label("Aggiorna", systemImage: "arrow.triangle.2.circlepath") }
                     }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .glassButton().controlSize(.small)
                 }
                 if let syncMessage { Text(syncMessage).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     /// Arriving at the gym (or a Siri request) opens today's session directly.
@@ -218,7 +262,7 @@ struct DayCard: View {
             Image(systemName: "chevron.right").foregroundStyle(.tertiary)
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(next ? Theme.accent : .clear, lineWidth: 2))
     }
 }
@@ -255,13 +299,13 @@ struct WorkoutDayView: View {
                 } label: {
                     Label("Adatta la scheda di oggi", systemImage: "wand.and.stars").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .glassProminentButton()
                 .accessibilityIdentifier("equip-adapt")
             }
             if let adaptMessage { Text(adaptMessage).font(.caption).foregroundStyle(.secondary) }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
         .onChange(of: busy) { _, _ in swaps += 1; adaptMessage = nil }
     }
 
@@ -271,9 +315,15 @@ struct WorkoutDayView: View {
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(day.focus).font(.headline)
-                    Text(phase == .deload ? Progression.title(phase) : SetWave.title).font(.subheadline).foregroundStyle(Theme.accent)
-                    Text("Primi due esercizi: 3, poi 4, poi 5 serie da 6–10 ripetizioni. Gli altri: al massimo 3 serie da 15. Dropset solo dove c'è 🔻.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    if PlanStore.shared.isCustom {
+                        Text("Progressione automatica").font(.subheadline).foregroundStyle(Theme.accent)
+                        Text("Carico e ripetizioni di oggi sono già scritti in ogni esercizio, calcolati dall'ultima volta.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text(phase == .deload ? Progression.title(phase) : SetWave.title).font(.subheadline).foregroundStyle(Theme.accent)
+                        Text("Primi due esercizi: 3, poi 4, poi 5 serie da 6–10 ripetizioni. Gli altri: al massimo 3 serie da 15. Dropset solo dove c'è 🔻.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -281,7 +331,7 @@ struct WorkoutDayView: View {
                 ForEach(day.blocks) { block in
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text("Jump set \(block.label)").font(.title3.bold())
+                            Text(block.exercises.count > 1 ? "Jump set \(block.label)" : "Esercizio \(block.label)").font(.title3.bold())
                             Spacer(minLength: 8)
                             // tap the rest time to start the timer
                             Button {
@@ -298,13 +348,15 @@ struct WorkoutDayView: View {
                             .accessibilityLabel("Avvia il recupero di \(block.restSeconds) secondi")
                             .accessibilityIdentifier("rest-start-\(block.label)")
                         }
-                        Text("Alterna \(block.label)1 e \(block.label)2: una serie dell'uno, \(block.restSeconds) s di recupero, una serie dell'altro.")
+                        Text(block.exercises.count > 1
+                             ? "Alterna \(block.label)1 e \(block.label)2: una serie dell'uno, \(block.restSeconds) s di recupero, una serie dell'altro."
+                             : "\(block.restSeconds) s di recupero tra una serie e l'altra.")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         ForEach(Array(block.exercises.enumerated()), id: \.element.id) { index, original in
-                            let exercise = ExerciseSwaps.resolved(SetWave.apply(Progression.apply(original, phase: phase), phase: phase))
+                            let exercise = ExerciseSwaps.resolved(WorkoutPlan.prescribed(original, phase: phase))
                             let partner = ExerciseSwaps.resolved(block.exercises[(index + 1) % block.exercises.count])
                             ExerciseCard(label: "\(block.label)\(index + 1)", original: original, exercise: exercise, rest: block.restSeconds,
-                                         next: partner, note: Progression.note(Progression.apply(original, phase: phase), phase: phase)) { swaps += 1 }
+                                         next: partner, note: PlanStore.shared.isCustom ? nil : Progression.note(Progression.apply(original, phase: phase), phase: phase)) { swaps += 1 }
                                 .id("\(original.name)-\(swaps)")
                         }
                     }
@@ -318,18 +370,18 @@ struct WorkoutDayView: View {
                 } label: {
                     Label("Termina allenamento", systemImage: "flag.checkered").frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
-                .buttonStyle(.borderedProminent)
+                .glassProminentButton()
                 .accessibilityIdentifier("workout-finish")
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 32)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(AppBackground())
         // the running timer stays visible at the top while scrolling
         .safeAreaInset(edge: .top) {
             if timer.isRunning {
                 RestTimerBanner(timer: timer)
-                    .background(Theme.background.opacity(0.95), in: RoundedRectangle(cornerRadius: 18))
+                    .glassCard(18)
                     .padding(.horizontal, 16).padding(.bottom, 6)
             }
         }
@@ -374,7 +426,7 @@ struct FinishedView: View {
             if !Supplements.creatineTakenToday {
                 Label("Ricordati la creatina: 5 g adesso.", systemImage: "pills.fill").font(.subheadline).foregroundStyle(.orange)
             }
-            Button("Grazie!") { dismiss() }.buttonStyle(.borderedProminent).padding(.top, 6)
+            Button("Grazie!") { dismiss() }.glassProminentButton().padding(.top, 6)
         }
         .padding(24)
         .onAppear {
@@ -424,7 +476,14 @@ struct ExerciseCard: View {
     }
 
     /// Set wave: same load while the sets go 3 → 4 → 5, more weight when a new wave starts at 3 sets.
+    /// The user's own plan: today's load and reps from the sessions done so far.
+    private var autoTarget: AutoProgress.Target? {
+        guard PlanStore.shared.isCustom else { return nil }
+        return AutoProgress.target(exercise, history: AutoProgress.sessions(logs.map { (day: $0.day, kg: $0.kg, reps: $0.reps) }))
+    }
+
     private var suggestion: String? {
+        if let autoTarget { return autoTarget.message }
         guard let lastDay = lastSession.first?.day else { return nil }
         let best = lastSession.map(\.kg).max() ?? 0
         return SetWave.advice(lastBest: best, lastDay: lastDay)
@@ -446,17 +505,19 @@ struct ExerciseCard: View {
                         Text("🔻 \(dropset) ultima serie").font(.caption.weight(.semibold)).foregroundStyle(.red)
                     }
                     Text(exercise.cue).font(.caption)
-                    Label(exercise.stretch, systemImage: "arrow.left.and.right").font(.caption).foregroundStyle(.secondary)
+                    if !exercise.stretch.isEmpty {
+                        Label(exercise.stretch, systemImage: "arrow.left.and.right").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 8) {
                 Button { choosingSwap = true } label: { Label("Cambia esercizio", systemImage: "arrow.triangle.2.circlepath") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .glassButton().controlSize(.small)
                 if exercise.name != original.name {
                     Button("Ripristina") { ExerciseSwaps.set(nil, for: original.name, always: true); swapped() }
-                        .buttonStyle(.bordered).controlSize(.small)
+                        .glassButton().controlSize(.small)
                 }
             }
             if !Equipment.isFree(exercise.name, busy: Equipment.busyNow) {
@@ -517,14 +578,17 @@ struct ExerciseCard: View {
                     Button { logSet(partials: 0) } label: {
                         Label("Serie \(today.count + 1) fatta", systemImage: "checkmark").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent).disabled(Int(reps) == nil)
+                    .glassProminentButton().disabled(Int(reps) == nil)
                 }
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
         .onAppear {
-            if let last = lastSession.last ?? logs.last { kg = last.kg.it(1) }
+            if let target = autoTarget, target.kind != .first {
+                if target.kg > 0 { kg = target.kg.it(1) }
+                if reps.isEmpty { reps = "\(target.reps)" }
+            } else if let last = lastSession.last ?? logs.last { kg = last.kg.it(1) }
         }
         .sheet(item: $editing) { set in SetEditSheet(set: set).presentationDetents([.medium]) }
         .confirmationDialog("Eliminare questa serie?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
@@ -565,7 +629,8 @@ struct ExerciseCard: View {
         guard let r = Int(reps) else { return }
         context.insert(SetLog(day: DayId.today, exercise: exercise.name, index: today.count + 1, reps: r,
                               kg: kg.italianDouble ?? 0, rir: rir, partials: partials))
-        reps = ""
+        // the user's own plan keeps today's target ready for the next set
+        reps = autoTarget.flatMap { $0.kind == .first ? nil : "\($0.reps)" } ?? ""
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         Hero.award(.workout)
         markTrainingDay()
@@ -653,10 +718,10 @@ struct RestTimerBanner: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 8) {
-                Button("−15 s") { timer.add(-15) }.buttonStyle(.bordered)
-                Button("+15 s") { timer.add(15) }.buttonStyle(.bordered)
+                Button("−15 s") { timer.add(-15) }.glassButton()
+                Button("+15 s") { timer.add(15) }.glassButton()
                 Spacer()
-                Button("Salta") { timer.stop() }.buttonStyle(.bordered)
+                Button("Salta") { timer.stop() }.glassButton()
             }
             .controlSize(.small)
         }
@@ -685,7 +750,7 @@ struct TimerSheet: View {
                             Button(s < 60 ? "\(s) s" : s % 60 == 0 ? "\(s / 60) min" : "\(s / 60):\(String(format: "%02d", s % 60))") {
                                 start(s)
                             }
-                            .buttonStyle(.bordered)
+                            .glassButton()
                         }
                     }
                     .padding(.vertical, 4)

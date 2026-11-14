@@ -79,7 +79,7 @@ final class UpdateChecker: ObservableObject {
         guard UserDefaults.standard.integer(forKey: key) < release.build else { return }
         UserDefaults.standard.set(release.build, forKey: key)
         let content = UNMutableNotificationContent()
-        content.title = "Nomorediet \(release.version) disponibile"
+        content.title = "Tempra \(release.version) disponibile"
         content.body = "Tocca Aggiorna nell'app per installarla."
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "update-\(release.build)", content: content, trigger: nil))
     }

@@ -8,7 +8,7 @@ import Foundation
 final class PlanStore: ObservableObject {
     static let shared = PlanStore()
 
-    enum Source: String, Codable { case calendar, nomorediet }
+    enum Source: String, Codable { case calendar, nomorediet, custom }
 
     @Published private(set) var calendarDays: [WorkoutDay]
     @Published private(set) var cycle: Cycle
@@ -16,19 +16,28 @@ final class PlanStore: ObservableObject {
     @Published var source: Source {
         didSet { UserDefaults.standard.set(source.rawValue, forKey: "plan.source") }
     }
+    /// The plan built by the user in the app, exercise by exercise: used exactly as written.
+    @Published var customDays: [WorkoutDay] {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(customDays), forKey: Self.customKey) }
+    }
+    /// The user's own plan is in use (and has at least one day).
+    var isCustom: Bool { source == .custom && !customDays.isEmpty }
 
-    /// The plan for the profile's sex: Nomorediet has a men's (shoulders and back) and a women's (glutes and legs) plan.
+    /// The plan for the profile's sex: Tempra has a men's (shoulders and back) and a women's (glutes and legs) plan.
     var days: [WorkoutDay] {
+        if isCustom { return customDays }
         if source == .calendar { return WorkoutPlan.withExtras(Preferences.personalize(calendarDays)) }
         if ProfileStore.shared.profile.sex == .donna { return Progression.withRoles(WorkoutPlan.womenDays) }
         return Progression.withRoles(Preferences.personalize(WorkoutPlan.nomoredietDays))
     }
     var name: String {
+        if isCustom { return "La mia scheda" }
         if source == .calendar { return "Scheda del Calendario · \(cycle.name)" }
-        return ProfileStore.shared.profile.sex == .donna ? "Nomorediet · glutei e tonificazione" : "Nomorediet · spalle e dorso"
+        return ProfileStore.shared.profile.sex == .donna ? "Tempra · glutei e tonificazione" : "Tempra · spalle e dorso"
     }
 
     private static let key = "plan.calendar.v1"
+    private static let customKey = "plan.custom.v1"
 
     private struct Saved: Codable {
         var days: [WorkoutDay]
@@ -38,6 +47,7 @@ final class PlanStore: ObservableObject {
 
     private init() {
         source = Source(rawValue: UserDefaults.standard.string(forKey: "plan.source") ?? "") ?? .calendar
+        customDays = UserDefaults.standard.data(forKey: Self.customKey).flatMap { try? JSONDecoder().decode([WorkoutDay].self, from: $0) } ?? []
         if let data = UserDefaults.standard.data(forKey: Self.key), let saved = try? JSONDecoder().decode(Saved.self, from: data), !saved.days.isEmpty {
             calendarDays = saved.days
             cycle = saved.cycle
@@ -53,7 +63,7 @@ final class PlanStore: ObservableObject {
     @MainActor func syncFromCalendar() async -> String {
         let store = EKEventStore()
         let granted = (try? await store.requestFullAccessToEvents()) ?? false
-        guard granted else { return "Consenti l'accesso al Calendario in Impostazioni → Nomorediet → Calendari." }
+        guard granted else { return "Consenti l'accesso al Calendario in Impostazioni → Tempra → Calendari." }
         let start = Calendar.current.date(byAdding: .day, value: -21, to: .now)!
         let end = Calendar.current.date(byAdding: .day, value: 21, to: .now)!
         let events = store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: nil))

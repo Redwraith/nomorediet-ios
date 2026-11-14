@@ -13,11 +13,11 @@ final class SpeechListener {
     func start(completion: @escaping (String?) -> Void) {
         SFSpeechRecognizer.requestAuthorization { status in
             guard status == .authorized else {
-                return DispatchQueue.main.async { completion("Consenti il riconoscimento vocale in Impostazioni → Nomorediet.") }
+                return DispatchQueue.main.async { completion("Consenti il riconoscimento vocale in Impostazioni → Tempra.") }
             }
             AVAudioApplication.requestRecordPermission { granted in
                 DispatchQueue.main.async {
-                    guard granted else { return completion("Consenti il microfono in Impostazioni → Nomorediet.") }
+                    guard granted else { return completion("Consenti il microfono in Impostazioni → Tempra.") }
                     do { try self.begin(); completion(nil) } catch { completion("Il microfono non è disponibile in questo momento.") }
                 }
             }

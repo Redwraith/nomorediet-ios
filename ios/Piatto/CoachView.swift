@@ -45,7 +45,7 @@ struct CoachTab: View {
                             Image(systemName: "mic.fill").foregroundStyle(Theme.accent)
                         }
                         .padding(14)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                        .glassCard(18)
                     }
                     .buttonStyle(.plain)
                     if let score = health.readiness { readinessCard(score) }
@@ -58,14 +58,14 @@ struct CoachTab: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                    .glassCard(18)
                     weeklyCard
                     remindersCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(AppBackground())
             .navigationTitle("Coach")
             .refreshable { Sync.syncHealth(context: context) }
         }
@@ -111,7 +111,7 @@ struct CoachTab: View {
             .font(.caption).foregroundStyle(.secondary)
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     struct Tip { var icon: String; var color: Color; var text: String }
@@ -162,14 +162,14 @@ struct CoachTab: View {
             Text(WeeklyRecap.text(entries: entries, weights: weights, sets: sets, profile: store.profile))
                 .font(.subheadline).foregroundStyle(.secondary).lineLimit(6)
             ShareLink(item: WeeklyRecap.text(entries: entries, weights: weights, sets: sets, profile: store.profile),
-                      subject: Text("Nomorediet · la mia settimana")) {
+                      subject: Text("Tempra · la mia settimana")) {
                 Label("Condividi o invia per email", systemImage: "envelope")
             }
-            .buttonStyle(.bordered)
+            .glassButton()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private var remindersCard: some View {
@@ -187,7 +187,7 @@ struct CoachTab: View {
             SupplementSettings()
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private func timeBinding(_ slot: String) -> Binding<Date> {
@@ -215,7 +215,7 @@ enum WeeklyRecap {
             let n = entries.filter { $0.day == day }.reduce(Nutrients.zero) { $0 + $1.nutrients }
             return n.kcal > 0 ? n : nil
         }
-        var lines = ["Nomorediet · settimana fino a \(DayId.label(DayId.today).lowercased())"]
+        var lines = ["Tempra · settimana fino a \(DayId.label(DayId.today).lowercased())"]
         if logged.isEmpty {
             lines.append("Nessun pasto registrato negli ultimi 7 giorni.")
         } else {

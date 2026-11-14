@@ -169,7 +169,7 @@ final class RepCounterViewController: UIViewController, AVCaptureVideoDataOutput
         AVCaptureDevice.requestAccess(for: .video) { [weak self] ok in
             DispatchQueue.main.async {
                 guard let self else { return }
-                if ok { self.configure() } else { self.statusLabel.text = "Consenti la fotocamera in Impostazioni → Nomorediet." }
+                if ok { self.configure() } else { self.statusLabel.text = "Consenti la fotocamera in Impostazioni → Tempra." }
             }
         }
     }

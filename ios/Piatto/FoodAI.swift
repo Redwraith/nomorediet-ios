@@ -11,7 +11,7 @@ enum FoodAI {
         var grams: Double
         var per100: Nutrients
         var confidence: String
-        /// Nutrients come from Nomorediet's food table (true) or from the model's estimate (false).
+        /// Nutrients come from Tempra's food table (true) or from the model's estimate (false).
         var fromTable = false
         /// What the AI recognised, when the table name differs ("Pasta al pomodoro").
         var detail = ""

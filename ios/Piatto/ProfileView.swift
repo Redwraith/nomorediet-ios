@@ -243,12 +243,14 @@ struct ProfileTab: View {
                     Button { app.sheet = .debug } label: { Label("Pannello di debug", systemImage: "ladybug") }
                 }
                 Section {
-                    Text("Nomorediet \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · i dati restano su questo iPhone.")
+                    Text("Tempra \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · i dati restano su questo iPhone.")
                         .font(.footnote).foregroundStyle(.secondary)
                     Text("I valori nutrizionali sono stime: non sostituiscono il parere di un medico o di un nutrizionista.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppBackground())
             .navigationTitle("Profilo")
             .onAppear { manualText = store.profile.manualKcal.map { $0.it() } ?? "" }
             .onChange(of: scenePhase) { _, phase in if phase == .active { pickUpCopiedKey() } }
@@ -349,7 +351,7 @@ struct OnboardingView: View {
             Form {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Benvenuto in Nomorediet").font(.title.bold())
+                        Text("Benvenuto in Tempra").font(.title.bold())
                         Text("Rispondi a qualche domanda: calcolo calorie e macro per i giorni di allenamento e di riposo. Puoi cambiare tutto dopo in Profilo.")
                             .foregroundStyle(.secondary)
                     }
@@ -396,7 +398,7 @@ struct OnboardingView: View {
                     } label: {
                         Text("Inizia").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .glassProminentButton()
                     .listRowBackground(Color.clear)
                 }
             }
@@ -449,7 +451,7 @@ private struct HealthStatusRow: View {
                     Text("Oggi \(Int(steps).formatted()) passi").font(.footnote).foregroundStyle(.secondary)
                 }
                 if cache.status?.contains("entitlement") == true || cache.status?.contains("Comandi rapidi") == true {
-                    Text("Per collegare Salute direttamente (passi e peso in automatico), installa Nomorediet con Impactor dal PC invece che con SideStore: mantiene il permesso di Salute anche con l'Apple ID gratuito. Poi qui premi \"Collega Apple Salute\" e scegli cosa condividere.")
+                    Text("Per collegare Salute direttamente (passi e peso in automatico), installa Tempra con Impactor dal PC invece che con SideStore: mantiene il permesso di Salute anche con l'Apple ID gratuito. Poi qui premi \"Collega Apple Salute\" e scegli cosa condividere.")
                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -486,15 +488,15 @@ struct HealthShortcutGuide: View {
         ("1", "Apri Comandi rapidi → Automazione → + → \"Ora del giorno\": scegli 22:00, Ogni giorno, e \"Esegui immediatamente\"."),
         ("2", "Aggiungi \"Trova campioni di Salute\": Tipo = Passi, Data di inizio = Oggi (non \"negli ultimi 7 giorni\")."),
         ("3", "Ripeti per Energia attiva ed Energia a riposo (data: oggi). Per il Peso: Tipo = Peso, ordina per data più recente, limite 1."),
-        ("4", "Aggiungi l'azione di Nomorediet \"Invia dati Salute a Nomorediet\", tocca \"Mostra altro\", poi ogni campo (Passi, Calorie attive…) → Seleziona variabile → il suo \"Campioni di Salute\". Non serve \"Calcola statistiche\": l'app somma da sola."),
-        ("5", "Chiama il comando \"Nomorediet Salute\" (va bene anche \"Invia dati Salute a Nomorediet\"): così i tasti Sincronizza dell'app lo avviano da soli. Tocca ▶︎ per provarlo: compare \"Ricevuto: … passi\"."),
-        ("+", "Consiglio: crea una seconda automazione \"App → Nomorediet → Viene aperta\" con lo stesso comando, così i dati sono aggiornati ogni volta che apri l'app."),
+        ("4", "Aggiungi l'azione di Tempra \"Invia dati Salute a Tempra\", tocca \"Mostra altro\", poi ogni campo (Passi, Calorie attive…) → Seleziona variabile → il suo \"Campioni di Salute\". Non serve \"Calcola statistiche\": l'app somma da sola."),
+        ("5", "Chiama il comando \"Tempra Salute\" (va bene anche \"Invia dati Salute a Tempra\"): così i tasti Sincronizza dell'app lo avviano da soli. Tocca ▶︎ per provarlo: compare \"Ricevuto: … passi\"."),
+        ("+", "Consiglio: crea una seconda automazione \"App → Tempra → Viene aperta\" con lo stesso comando, così i dati sono aggiornati ogni volta che apri l'app."),
     ]
 
     var body: some View {
         List {
             Section {
-                Text("Le app installate con SideStore e un Apple ID gratuito non ricevono da Apple il permesso di leggere Salute. Comandi rapidi invece può leggerla: un'automazione passa a Nomorediet passi, calorie e peso di ogni giorno. I dati restano sull'iPhone.")
+                Text("Le app installate con SideStore e un Apple ID gratuito non ricevono da Apple il permesso di leggere Salute. Comandi rapidi invece può leggerla: un'automazione passa a Tempra passi, calorie e peso di ogni giorno. I dati restano sull'iPhone.")
                     .font(.subheadline)
             }
             Section("Come si fa (5 minuti, una volta sola)") {

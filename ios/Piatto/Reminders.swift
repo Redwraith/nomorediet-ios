@@ -47,7 +47,7 @@ enum Reminders {
                         when.minute = parts[1]
                         guard let fire = cal.date(from: when), fire > now else { continue }
                         let content = UNMutableNotificationContent()
-                        content.title = "Nomorediet"
+                        content.title = "Tempra"
                         content.body = slot.body
                         content.sound = .default
                         let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)

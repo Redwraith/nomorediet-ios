@@ -102,7 +102,7 @@ final class ExerciseCatalog: ObservableObject {
         }
     }
 
-    /// The Nomorediet pattern of a catalog exercise (for the stick-figure fallback and the swap list).
+    /// The Tempra pattern of a catalog exercise (for the stick-figure fallback and the swap list).
     static func pattern(for item: Item) -> String {
         let n = item.name.lowercased()
         switch item.primaryMuscles.first ?? "" {
@@ -142,7 +142,7 @@ final class ExerciseCatalog: ObservableObject {
         ][e] ?? e
     }
 
-    /// Italian names in Nomorediet's plans → the catalog exercise with the same movement, for the illustrations.
+    /// Italian names in Tempra's plans → the catalog exercise with the same movement, for the illustrations.
     private static let italian: [(String, String)] = [
         ("panca piana con manubri", "Dumbbell_Bench_Press"), ("panca piana manubri", "Dumbbell_Bench_Press"),
         ("panca piana", "Barbell_Bench_Press_-_Medium_Grip"), ("panca inclinata", "Incline_Dumbbell_Press"),
@@ -171,7 +171,7 @@ final class ExerciseCatalog: ObservableObject {
     ]
 }
 
-/// The catalog animation: the 4 illustrated frames in a loop, or Nomorediet's stick figure while they load.
+/// The catalog animation: the 4 illustrated frames in a loop, or Tempra's stick figure while they load.
 struct CatalogFigure: View {
     var id: String
     var pattern: String
@@ -254,7 +254,7 @@ struct CatalogSwapSection: View {
                                                       cue: item.instructions.first ?? ""))
                             detail = nil
                         } label: { Label("Usa questo esercizio oggi", systemImage: "checkmark").frame(maxWidth: .infinity) }
-                            .buttonStyle(.borderedProminent)
+                            .glassProminentButton()
                     }
                     .padding()
                 }

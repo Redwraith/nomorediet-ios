@@ -11,7 +11,7 @@ enum ShortcutHealth {
     static let metrics = ["steps", "activeKcal", "basalKcal", "km", "exerciseMin", "flights", "weightKg", "sleepHours",
                           "restingHR", "heartRate", "hrv", "vo2max", "bodyFat"]
     /// Names of the shortcut: the one in the guide, then the one named after the action.
-    static let shortcutNames = ["Nomorediet Salute", "Invia dati Salute a Nomorediet"]
+    static let shortcutNames = ["Tempra Salute", "Nomorediet Salute", "Invia dati Salute a Tempra", "Invia dati Salute a Nomorediet"]
     static var shortcutName: String { shortcutNames[0] }
 
     /// Runs the user's shortcut through Shortcuts and comes back to the app (x-callback). When the first name does
@@ -149,9 +149,9 @@ enum ShortcutHealth {
 /// directly (a list of samples, read as numbers) or a single number: the app adds up counts (steps, kcal, km,
 /// minutes, flights), averages rates (heart rate, HRV) and keeps the latest reading (weight, body fat, VO2 max).
 struct SendHealthIntent: AppIntent {
-    static var title: LocalizedStringResource = "Invia dati Salute a Nomorediet"
+    static var title: LocalizedStringResource = "Invia dati Salute a Tempra"
     static var description = IntentDescription(
-        "Passa a Nomorediet i dati di Apple Salute di oggi. In ogni campo metti il risultato di \"Trova campioni di Salute\" (data di inizio: oggi).")
+        "Passa a Tempra i dati di Apple Salute di oggi. In ogni campo metti il risultato di \"Trova campioni di Salute\" (data di inizio: oggi).")
     static var openAppWhenRun = false
 
     @Parameter(title: "Passi") var steps: [Double]?
@@ -181,7 +181,7 @@ struct SendHealthIntent: AppIntent {
         let received = values.compactMapValues { $0 }
         guard !received.isEmpty else {
             DebugLog.shared.add("error", "health", "Comando rapido senza dati: nessun campo collegato")
-            return .result(dialog: "Nomorediet non ha ricevuto dati: tocca i campi dell'azione (Passi, Calorie…) e scegli il risultato di \"Trova campioni di Salute\".")
+            return .result(dialog: "Tempra non ha ricevuto dati: tocca i campi dell'azione (Passi, Calorie…) e scegli il risultato di \"Trova campioni di Salute\".")
         }
         ShortcutHealth.record(day: DayId.today, values: values)
         Sync.applyHealth(ShortcutHealth.result(), context: nil)

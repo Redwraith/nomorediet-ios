@@ -129,9 +129,9 @@ struct MotionRepCounterView: View {
                 Spacer()
                 HStack(spacing: 12) {
                     Button(engine.running ? "Ricomincia" : "Inizia") { engine.stop(); engine.start() }
-                        .buttonStyle(.bordered).controlSize(.large)
+                        .glassButton().controlSize(.large)
                     Button("Fine serie") { engine.stop(); done(engine.reps) }
-                        .buttonStyle(.borderedProminent).controlSize(.large).disabled(engine.reps == 0)
+                        .glassProminentButton().controlSize(.large).disabled(engine.reps == 0)
                 }
             }
             .padding(24)

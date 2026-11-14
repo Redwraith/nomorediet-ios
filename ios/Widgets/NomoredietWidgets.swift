@@ -45,7 +45,7 @@ struct TodayWidgetView: View {
             } else {
                 VStack(spacing: 6) {
                     Image(systemName: "fork.knife.circle.fill").font(.largeTitle).foregroundStyle(accent)
-                    Text("Apri Nomorediet").font(.headline)
+                    Text("Apri Tempra").font(.headline)
                     Text("per vedere la giornata").font(.caption).foregroundStyle(.secondary)
                 }
             }

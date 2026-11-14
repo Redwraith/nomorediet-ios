@@ -260,7 +260,7 @@ struct AddFoodView: View {
                     .ignoresSafeArea()
                 } else {
                     ContentUnavailableView("Lettura non disponibile", systemImage: "text.viewfinder",
-                                           description: Text("Consenti la fotocamera in Impostazioni → Nomorediet."))
+                                           description: Text("Consenti la fotocamera in Impostazioni → Tempra."))
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -270,13 +270,13 @@ struct AddFoodView: View {
                         .foregroundStyle(scannedWords.isEmpty ? .secondary : .primary)
                         .multilineTextAlignment(.center)
                     HStack {
-                        Button("Cancella") { scannedWords = [] }.buttonStyle(.bordered).disabled(scannedWords.isEmpty)
+                        Button("Cancella") { scannedWords = [] }.glassButton().disabled(scannedWords.isEmpty)
                         Button {
                             query = scannedWords.joined(separator: " ")
                             scannedWords = []
                             mode = .search
                         } label: { Label("Cerca", systemImage: "magnifyingglass").frame(maxWidth: .infinity) }
-                            .buttonStyle(.borderedProminent).disabled(scannedWords.isEmpty)
+                            .glassProminentButton().disabled(scannedWords.isEmpty)
                             .accessibilityIdentifier("scan-text-search")
                     }
                 }
@@ -299,7 +299,7 @@ struct AddFoodView: View {
                         .ignoresSafeArea()
                 } else {
                     ContentUnavailableView("Scanner non disponibile", systemImage: "barcode.viewfinder",
-                                           description: Text("Consenti la fotocamera in Impostazioni → Nomorediet."))
+                                           description: Text("Consenti la fotocamera in Impostazioni → Tempra."))
                 }
             }
             .navigationTitle("Inquadra il codice a barre")
@@ -435,7 +435,7 @@ struct AddFoodView: View {
         } header: {
             Text(aiResult.map { "Analisi AI · \($0.dish)" } ?? "Analisi AI")
         } footer: {
-            Text("Correggi i grammi se servono: Nomorediet ricorda le correzioni e le usa per le prossime foto.")
+            Text("Correggi i grammi se servono: Tempra ricorda le correzioni e le usa per le prossime foto.")
         }
     }
 
@@ -467,12 +467,12 @@ struct AddFoodView: View {
             } label: {
                 Label("Analizza", systemImage: "sparkles").font(.headline).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .glassProminentButton()
             .disabled(mealText.trimmingCharacters(in: .whitespaces).count < 3 || analyzing)
             .accessibilityIdentifier("describe-analyze")
         } header: { Text("Descrivi il pasto") } footer: {
             Text(FoodAI.isReady
-                 ? "L'AI riconosce gli alimenti e le quantità; calorie e nutrienti vengono dalla tabella di Nomorediet quando l'alimento c'è."
+                 ? "L'AI riconosce gli alimenti e le quantità; calorie e nutrienti vengono dalla tabella di Tempra quando l'alimento c'è."
                  : "Senza un motore AI attivo uso il riconoscimento semplice: scrivi quantità e alimenti, per esempio \"200 g di riso, 2 uova\".")
         }
     }
@@ -598,10 +598,10 @@ struct AmountSheet: View {
                             HStack {
                                 ForEach(portions.indices, id: \.self) { i in
                                     let p = portions[i]
-                                    Button("\(p.0) · \(p.1.it()) g") { grams = p.1; text = p.1.it() }.buttonStyle(.bordered)
+                                    Button("\(p.0) · \(p.1.it()) g") { grams = p.1; text = p.1.it() }.glassButton()
                                 }
-                                Button("½") { grams = (grams / 2).rounded(); text = grams.it() }.buttonStyle(.bordered)
-                                Button("×2") { grams *= 2; text = grams.it() }.buttonStyle(.bordered)
+                                Button("½") { grams = (grams / 2).rounded(); text = grams.it() }.glassButton()
+                                Button("×2") { grams *= 2; text = grams.it() }.glassButton()
                             }
                         }
                     }

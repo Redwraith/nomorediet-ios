@@ -294,6 +294,28 @@ enum Nutrition {
         return tdee.rounded()
     }
 
+    /// Trend weight: an exponential moving average that follows the real change and ignores daily swings of water
+    /// and food (10% of each new day, more after a gap between weigh-ins). Same idea as the Hacker's Diet trend.
+    static func smoothed(_ points: [(Date, Double)], alpha: Double = 0.1) -> [(Date, Double)] {
+        var out: [(Date, Double)] = []
+        for (date, kg) in points {
+            guard let last = out.last else { out.append((date, kg)); continue }
+            let days = max(1, date.timeIntervalSince(last.0) / 86400)
+            let weight = 1 - pow(1 - alpha, days)
+            out.append((date, last.1 + weight * (kg - last.1)))
+        }
+        return out
+    }
+
+    /// Keeps the calorie target steady: the estimated maintenance changes at most once a week and by at most
+    /// 150 kcal, so one odd fortnight does not move the goals up and down.
+    static func limited(_ fresh: Double?, previous: Double?, changedAt: Date?, now: Date = .now) -> Double? {
+        guard let fresh else { return nil }
+        guard let previous else { return fresh }
+        if let changedAt, now.timeIntervalSince(changedAt) < 7 * 86400 { return previous }
+        return min(max(fresh, previous - 150), previous + 150)
+    }
+
     /// Least-squares line through weights over time: slope in kg/day.
     static func trend(_ points: [(Date, Double)]) -> (slope: Double, intercept: Double, origin: Date) {
         guard let origin = points.first?.0, points.count >= 2 else { return (0, points.first?.1 ?? 0, points.first?.0 ?? .now) }

@@ -17,6 +17,14 @@ struct ProgressTab: View {
         return weights.filter { $0.day >= from }
     }
 
+    struct TrendPoint { var day: Date; var kg: Double }
+
+    /// Trend weight for the shown period, computed over all weigh-ins so the line does not restart at the edge.
+    private var shownTrend: [TrendPoint] {
+        let from = DayId.date(DayId.shift(DayId.today, by: -range))
+        return Nutrition.smoothed(weights.map { (DayId.date($0.day), $0.kg) }).filter { $0.0 >= from }.map { TrendPoint(day: $0.0, kg: $0.1) }
+    }
+
     private var trend: (slope: Double, intercept: Double, origin: Date)? {
         let pts = weights.filter { $0.day >= DayId.shift(DayId.today, by: -28) }.map { (DayId.date($0.day), $0.kg) }
         return pts.count >= 3 ? Nutrition.trend(pts) : nil
@@ -53,7 +61,7 @@ struct ProgressTab: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(AppBackground())
             .navigationTitle("Progressi")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -85,11 +93,14 @@ struct ProgressTab: View {
             } else {
                 Chart {
                     ForEach(shownWeights) { w in
-                        LineMark(x: .value("Giorno", DayId.date(w.day)), y: .value("kg", w.kg))
-                            .interpolationMethod(.catmullRom)
-                            .foregroundStyle(Theme.accent)
                         PointMark(x: .value("Giorno", DayId.date(w.day)), y: .value("kg", w.kg))
-                            .foregroundStyle(Theme.accent).symbolSize(20)
+                            .foregroundStyle(Theme.accent.opacity(0.45)).symbolSize(18)
+                    }
+                    ForEach(shownTrend, id: \.day) { t in
+                        LineMark(x: .value("Giorno", t.day), y: .value("kg", t.kg), series: .value("Serie", "Tendenza"))
+                            .interpolationMethod(.catmullRom)
+                            .lineStyle(StrokeStyle(lineWidth: 3))
+                            .foregroundStyle(Theme.accent)
                     }
                     RuleMark(y: .value("Obiettivo", store.profile.targetKg))
                         .foregroundStyle(.secondary).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -101,11 +112,15 @@ struct ProgressTab: View {
                     let diff = last.kg - first.kg
                     Text("\(diff >= 0 ? "+" : "")\(diff.it(1)) kg nel periodo · ultimo \(last.kg.it(1)) kg")
                         .font(.subheadline).foregroundStyle(.secondary)
+                    if let trendNow = shownTrend.last?.kg {
+                        Text("Peso di tendenza: \(trendNow.it(1)) kg. La linea è la media che ignora gli sbalzi di acqua e cibo da un giorno all'altro: guarda quella, non la singola pesata.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     @ViewBuilder private var forecastCard: some View {
@@ -133,7 +148,7 @@ struct ProgressTab: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .glassCard(18)
         }
     }
 
@@ -162,14 +177,14 @@ struct ProgressTab: View {
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private var adaptiveCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Calorie adattive", systemImage: "gauge.with.dots.needle.67percent").font(.headline)
             if let tdee = store.profile.adaptiveTDEE {
-                Text("Dal cibo registrato e dall'andamento del peso, il tuo mantenimento reale è circa **\(tdee.it()) kcal**. Gli obiettivi giornalieri usano questo valore.")
+                Text("Dal cibo registrato e dall'andamento del peso, il tuo mantenimento reale è circa **\(tdee.it()) kcal**. Gli obiettivi giornalieri usano questo valore e si correggono da soli: al massimo una volta a settimana e di 150 kcal per volta, così non ballano.")
             } else {
                 Text("Registra cibo per almeno 10 giorni e il peso per 2 settimane: poi calcolo il tuo mantenimento reale e adatto le calorie da solo. Per ora uso la formula: \(Nutrition.maintenance(store.profile).it()) kcal.")
                     .foregroundStyle(.secondary)
@@ -178,7 +193,7 @@ struct ProgressTab: View {
         .font(.subheadline)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 
     private var exportCard: some View {
@@ -186,14 +201,14 @@ struct ProgressTab: View {
             Text("Esporta").font(.headline)
             Text("Riepilogo giorno per giorno degli ultimi 30 giorni: calorie, macro, fibre e peso.").font(.subheadline).foregroundStyle(.secondary)
             ShareLink(item: CSVExport.file(entries: entries, weights: weights, days: 30),
-                      preview: SharePreview("Nomorediet – ultimi 30 giorni")) {
+                      preview: SharePreview("Tempra – ultimi 30 giorni")) {
                 Label("Esporta CSV", systemImage: "square.and.arrow.up")
             }
-            .buttonStyle(.borderedProminent)
+            .glassProminentButton()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 }
 
@@ -420,6 +435,6 @@ struct StepsCard: View {
             }
         }
         .padding(14)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+        .glassCard(18)
     }
 }

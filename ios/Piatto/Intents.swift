@@ -26,7 +26,7 @@ extension Notification.Name {
 
 struct PhotoMealIntent: AppIntent {
     static var title: LocalizedStringResource = "Fotografa il pasto"
-    static var description = IntentDescription("Apre Nomorediet con la fotocamera pronta per il pasto.")
+    static var description = IntentDescription("Apre Tempra con la fotocamera pronta per il pasto.")
     static var openAppWhenRun = true
 
     func perform() async throws -> some IntentResult {
@@ -37,7 +37,7 @@ struct PhotoMealIntent: AppIntent {
 
 struct LogWeightIntent: AppIntent {
     static var title: LocalizedStringResource = "Registra il peso"
-    static var description = IntentDescription("Salva il peso di oggi in Nomorediet.")
+    static var description = IntentDescription("Salva il peso di oggi in Tempra.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Peso in kg")
@@ -46,7 +46,7 @@ struct LogWeightIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         PendingAction.set(["action": "weight", "kg": kg])
         let text = String(format: "%.1f", kg).replacingOccurrences(of: ".", with: ",")
-        return .result(dialog: IntentDialog(stringLiteral: "Registro \(text) kg su Nomorediet."))
+        return .result(dialog: IntentDialog(stringLiteral: "Registro \(text) kg su Tempra."))
     }
 }
 
@@ -63,7 +63,7 @@ struct ScalePhotoIntent: AppIntent {
 
 struct StartWorkoutIntent: AppIntent {
     static var title: LocalizedStringResource = "Apri l'allenamento"
-    static var description = IntentDescription("Apre Nomorediet sulla scheda di allenamento di oggi.")
+    static var description = IntentDescription("Apre Tempra sulla scheda di allenamento di oggi.")
     static var openAppWhenRun = true
 
     func perform() async throws -> some IntentResult {

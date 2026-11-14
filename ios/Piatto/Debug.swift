@@ -26,7 +26,7 @@ final class DebugLog: NSObject, ObservableObject {
     private static let crashKey = "debug.crashes"
 
     func add(_ level: String, _ source: String, _ text: String) {
-        // Also to the system log, so 3uTools / idevicesyslog show it as "Nomorediet(Nomorediet)".
+        // Also to the system log, so 3uTools / idevicesyslog show it as "Tempra(Tempra)".
         let line = "[\(source)] \(text.prefix(1000))"
         if level == "error" { Self.os.error("\(line, privacy: .public)") } else { Self.os.notice("\(line, privacy: .public)") }
         let entry = Entry(date: Date(), level: level, source: source, text: String(text.prefix(2000)))
@@ -63,7 +63,7 @@ final class DebugLog: NSObject, ObservableObject {
 
     func report(status: [(String, String)]) -> String {
         let time = Date.FormatStyle(date: .omitted, time: .standard)
-        var out = "Nomorediet \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "?")"
+        var out = "Tempra \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "?")"
             + " (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") ?? "?"))"
             + " · iOS \(UIDevice.current.systemVersion) · \(Self.model)\n\n"
         out += status.map { "\($0.0): \($0.1)" }.joined(separator: "\n")

@@ -179,11 +179,11 @@ struct UpdateBanner: View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.down.app.fill").font(.title2).foregroundStyle(Theme.accent)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Nomorediet \(release.version) disponibile").font(.subheadline.bold())
+                Text("Tempra \(release.version) disponibile").font(.subheadline.bold())
                 Text("Con SideStore: un tocco · con Sideloadly: scarica l'.ipa").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Aggiorna") { updates.openSideStore() }.buttonStyle(.borderedProminent)
+            Button("Aggiorna") { updates.openSideStore() }.glassProminentButton()
             Button { updates.dismissedBuild = release.build } label: { Image(systemName: "xmark") }
                 .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Nascondi")
         }

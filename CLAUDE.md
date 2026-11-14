@@ -1,4 +1,4 @@
-# Nomorediet per iPhone
+# Tempra (ex Nomorediet) per iPhone
 
 SwiftUI app (diario alimentare, peso, allenamento, Apple Salute) for a single user, Simone, who writes in
 Italian: answer in Italian. Sideloaded with a free Apple ID (SideStore or Impactor), never the App Store.

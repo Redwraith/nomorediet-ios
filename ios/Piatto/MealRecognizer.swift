@@ -6,7 +6,7 @@ import UIKit
 /// Based on DietAI24 (Nature Communications Medicine, 2025) and open-source loggers such as NutriTrack and
 /// fitness-log: the model is good at recognising food and bad at nutrition numbers, so
 ///  1. RECOGNISE — the AI lists each food with a short description, cooking state, portion and grams;
-///  2. RETRIEVE — it picks the matching entry from Nomorediet's food table (the catalog is in the prompt for
+///  2. RETRIEVE — it picks the matching entry from Tempra's food table (the catalog is in the prompt for
 ///     cloud engines; multi-query fuzzy search on the device for Apple and the offline parser);
 ///  3. PORTION — for a catalog food it counts standard portions ("2 uova", "1 piatto") instead of guessing grams;
 ///  4. COMPUTE — nutrients = table values × grams, deterministically. The model's own numbers are used only for
@@ -124,7 +124,7 @@ enum MealRecognizer {
     // MARK: Prompt
 
     static let system = """
-    Sei il nutrizionista di Nomorediet, un'app italiana per contare calorie e nutrienti. Ricevi la foto di un pasto \
+    Sei il nutrizionista di Tempra, un'app italiana per contare calorie e nutrienti. Ricevi la foto di un pasto \
     e/o la sua descrizione scritta o dettata a voce.
 
     Procedi così:

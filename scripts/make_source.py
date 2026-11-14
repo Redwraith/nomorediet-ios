@@ -16,7 +16,7 @@ entry = {
     "version": version,
     "buildVersion": build,
     "date": datetime.date.today().isoformat(),
-    "localizedDescription": notes or f"Nomorediet {version}",
+    "localizedDescription": notes or f"Tempra {version}",
     "downloadURL": url,
     "size": os.path.getsize(ipa),
     "minOSVersion": "18.0",
@@ -24,9 +24,9 @@ entry = {
 app = (source.get("apps") or [{}])[0]
 versions = [v for v in app.get("versions", []) if v.get("buildVersion") != build]
 app.update({
-    "name": "Nomorediet",
+    "name": "Tempra",
     "bundleIdentifier": "app.piatto.ios",
-    "developerName": "Nomorediet",
+    "developerName": "Tempra",
     "subtitle": "Diario alimentare, peso e allenamento",
     "localizedDescription": "Diario alimentare con riconoscimento dei pasti da foto, voce e testo, database di oltre 170.000 alimenti, peso, grafici e scheda di allenamento.",
     "iconURL": icon,
@@ -36,9 +36,9 @@ app.update({
     "appPermissions": {"entitlements": [], "privacy": {}},
 })
 source.update({
-    "name": "Nomorediet",
+    "name": "Tempra",
     "identifier": "app.piatto.ios.source",
-    "subtitle": "Aggiornamenti di Nomorediet",
+    "subtitle": "Aggiornamenti di Tempra",
     "iconURL": icon,
     "apps": [app],
     "news": source.get("news", []),
