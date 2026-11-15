@@ -1015,3 +1015,58 @@ final class TrendTests: XCTestCase {
         XCTAssertNil(Nutrition.limited(nil, previous: 2300, changedAt: nil, now: now))
     }
 }
+
+final class JevTests: XCTestCase {
+    func testRequestBodyMatchesTheAPI() throws {
+        let body = JevAI.body(state: ["cibi": ["pasta"]], questions: ["q": JevAI.Choice(instructions: "Quale?", criteria: [("a", "prima"), ("b", "seconda")])])
+        XCTAssertEqual(body["model"] as? String, "jev-latest")
+        let q = (body["questions"] as? [String: Any])?["q"] as? [String: Any]
+        XCTAssertEqual(q?["type"] as? String, "choice")
+        XCTAssertEqual((q?["criteria"] as? [String: String])?["b"], "seconda")
+        XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: body))
+    }
+
+    func testResponseIsRead() {
+        let json = #"{"model":"jev-1","answers":{"food0":{"type":"choice","choice":"c1","confidence":0.82,"probabilities":{"c0":0.1,"c1":0.85,"nessuno":0.05}}},"usage":{"input_tokens":90,"output_tokens":3}}"#
+        let answers = JevAI.parse(Data(json.utf8))
+        XCTAssertEqual(answers?["food0"]?.choice, "c1")
+        XCTAssertEqual(answers?["food0"]?.probability("c1") ?? 0, 0.85, accuracy: 0.0001)
+    }
+
+    func testPickUsesTheCandidateOnlyWhenSure() {
+        let foods = [Food(name: "Riso bianco (crudo)", per100: Nutrients(kcal: 332), portion: 80, portionName: "1 piatto"),
+                     Food(name: "Riso basmati cotto", per100: Nutrients(kcal: 130), portion: 180, portionName: "1 piatto")]
+        let sure = JevAI.Answer(choice: "c1", confidence: 0.8, probabilities: ["c0": 0.1, "c1": 0.85, "nessuno": 0.05])
+        XCTAssertEqual(FoodChooser.pick(sure, candidates: foods)?.food?.name, "Riso basmati cotto")
+        let unsure = JevAI.Answer(choice: "c0", confidence: 0.3, probabilities: ["c0": 0.4, "c1": 0.35, "nessuno": 0.25])
+        XCTAssertNil(FoodChooser.pick(unsure, candidates: foods))
+        let none = JevAI.Answer(choice: "nessuno", confidence: 0.9, probabilities: ["nessuno": 0.9])
+        XCTAssertNotNil(FoodChooser.pick(none, candidates: foods))
+        XCTAssertNil(FoodChooser.pick(none, candidates: foods)?.food)
+        let bad = JevAI.Answer(choice: "c7", confidence: 0.9, probabilities: ["c7": 0.9])
+        XCTAssertNil(FoodChooser.pick(bad, candidates: foods))
+    }
+
+    func testGroundUsesJevsChoice() {
+        let chosen = Food(name: "Yogurt greco 0% Fage", per100: Nutrients(kcal: 54, protein: 10.3), portion: 170, portionName: "1 vasetto")
+        let raw = MealRecognizer.Raw(name: "yogurt greco", grams: 0, per100: Nutrients(), confidence: "media")
+        let item = MealRecognizer.ground(raw, in: FoodDatabase.foods, pick: FoodChooser.Pick(food: chosen, probability: 0.9))
+        XCTAssertEqual(item?.name, "Yogurt greco 0% Fage")
+        XCTAssertEqual(item?.grams, 170)
+        XCTAssertEqual(item?.fromTable, true)
+    }
+
+    func testGroundKeepsTheEstimateWhenJevSaysNone() {
+        let raw = MealRecognizer.Raw(name: "piadina farcita", grams: 200, per100: Nutrients(kcal: 280), confidence: "media")
+        let item = MealRecognizer.ground(raw, in: FoodDatabase.foods, pick: FoodChooser.Pick(food: nil, probability: 0.9))
+        XCTAssertEqual(item?.fromTable, false)
+        XCTAssertEqual(item?.per100.kcal, 280)
+    }
+
+    func testCandidatesComeFromTheTable() {
+        let raw = MealRecognizer.Raw(name: "riso basmati", grams: 80, per100: Nutrients(), confidence: "media")
+        let list = FoodChooser.candidates(for: raw, in: FoodDatabase.foods)
+        XCTAssertTrue(list.contains { $0.name.lowercased().contains("riso") })
+        XCTAssertLessThanOrEqual(list.count, 9)
+    }
+}

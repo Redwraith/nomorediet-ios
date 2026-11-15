@@ -1,5 +1,10 @@
 # Tempra — Novità
 
+## 5.1
+- Animazioni fluide: le figure degli esercizi scaricano e preparano i 4 fotogrammi una volta sola e passano dall'uno all'altro con una breve dissolvenza (prima ogni fotogramma veniva riscaricato e si vedeva lo scatto). L'omino animato gira a 30 fotogrammi al secondo e si ferma quando non è sullo schermo; nelle liste di scelta è fermo, così lo scorrimento non rallenta.
+- Cambia esercizio sul posto: in palestra tocca il nome o la figura di un esercizio e si apre subito la scelta. In cima "Scegli tra tutti gli esercizi" apre l'elenco completo per gruppo muscolare, il catalogo di 870 esercizi o un nome scritto da te; sotto restano le alternative per lo stesso muscolo con gli attrezzi liberi in cima.
+- Jev (TypeSafe) per il cibo: dopo il riconoscimento, per ogni alimento Jev sceglie la voce giusta tra la tabella di Tempra, il database Open Food Facts + USDA e, se lì c'è poco, Open Food Facts online, guardando crudo/cotto, marca e valori plausibili. Calorie e macro vengono dalla voce scelta; se nessuna corrisponde resta la stima AI, segnata come tale. Jev decide anche in quale pasto va un cibo quando non lo dici. Si collega in Profilo → "Jev · scelte precise sul cibo"; senza chiave tutto funziona come prima.
+
 ## 5.0
 - Nuovo nome: l'app ora si chiama Tempra. Dati, sorgente di SideStore e comandi rapidi restano gli stessi (il comando "Nomorediet Salute" continua a funzionare).
 - Nuova grafica "vetro": sfondo sfumato, schede traslucide e, da iOS 26, Liquid Glass sulle schede principali e sui pulsanti. Testi e numeri restano ad alto contrasto, in chiaro e in scuro.

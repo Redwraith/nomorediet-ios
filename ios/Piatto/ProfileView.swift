@@ -164,6 +164,7 @@ struct ProfileTab: View {
                          ? "Gemini è gratuito entro i limiti giornalieri di Google, senza carta di credito. La chiave si crea con il tuo account Google su AI Studio e resta nel portachiavi dell'iPhone. Attenzione: con il livello gratuito Google può usare foto e richieste per migliorare i suoi prodotti."
                          : "Claude riconosce il cibo e stima grammi e nutrienti con più precisione. Si paga a consumo sul tuo account Anthropic, circa 2–6 centesimi a foto. La chiave resta nel portachiavi dell'iPhone e la foto va solo ad Anthropic.")
                 }
+                JevSection()
                 if FoodAI.isReady || hasKey {
                     Section {
                         Toggle("Analisi AI attiva", isOn: $ai.settings.enabled)
@@ -525,5 +526,42 @@ struct HealthShortcutGuide: View {
         }
         .navigationTitle("Salute con Comandi rapidi")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Jev (TypeSafe): chooses the right database entry for each food and the meal it belongs to.
+struct JevSection: View {
+    @State private var ready = JevAI.isReady
+    @State private var key = ""
+    @State private var status: String?
+    @State private var checking = false
+
+    var body: some View {
+        Section {
+            if ready {
+                Label("Jev collegato", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.accent)
+                Button("Scollega Jev", role: .destructive) { Keychain.delete(JevAI.keyService); ready = false; status = nil }
+            } else {
+                SecureField("Chiave TypeSafe", text: $key)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .accessibilityIdentifier("jev-key")
+                Button {
+                    checking = true
+                    status = "Controllo…"
+                    Task {
+                        let result = await JevAI.connect(key: key)
+                        status = result.message
+                        ready = result.ok
+                        if result.ok { key = "" }
+                        checking = false
+                    }
+                } label: { if checking { ProgressView() } else { Text("Collega Jev") } }
+                .disabled(key.trimmingCharacters(in: .whitespaces).count < 10 || checking)
+                Link("Crea la chiave su typesafe.ai", destination: JevAI.keyPage).font(.footnote)
+            }
+            if let status { Text(status).font(.footnote).foregroundStyle(.secondary) }
+        } header: { Text("Jev · scelte precise sul cibo") } footer: {
+            Text("Dopo che l'AI ha riconosciuto i cibi, Jev sceglie per ognuno la voce giusta tra la tabella di Tempra, il database Open Food Facts + USDA e, se serve, Open Food Facts online (crudo o cotto, marca, valori plausibili). Decide anche in quale pasto va un cibo quando non lo dici. Risponde in meno di un secondo; senza Jev l'app funziona come prima. Si paga a consumo su typesafe.ai; ai server di TypeSafe vanno solo i nomi dei cibi e dei candidati, mai le foto.")
+        }
     }
 }

@@ -94,7 +94,12 @@ enum MealRecognizer {
         }
         // grounding searches the large database: keep it off the main thread
         let rawItems = raw.items
-        var items = await Task.detached(priority: .userInitiated) { rawItems.compactMap { ground($0, in: foods) } }.value
+        // Jev picks the real database entry for each food (Open Food Facts, USDA, the table) when it is connected
+        let said = input.text.isEmpty ? input.packaging.joined(separator: " ") : input.text
+        let picks = await FoodChooser.choose(rawItems, said: said, foods: foods)
+        var items = await Task.detached(priority: .userInitiated) {
+            zip(rawItems, picks).compactMap { ground($0.0, in: foods, pick: $0.1) }
+        }.value
         guard !items.isEmpty else { throw FoodAI.Failure.empty }
         // a kitchen scale in the photo beats any estimate: its weight is the food on it
         var note = raw.note
@@ -231,10 +236,19 @@ enum MealRecognizer {
 
     /// Ties one recognised food to the table: exact catalog name first, then a careful fuzzy match.
     /// Returns nil for rows without a usable quantity.
-    static func ground(_ raw: Raw, in foods: [Food]) -> FoodAI.Item? {
-        let food = foods.first { FoodDatabase.normalize($0.name) == FoodDatabase.normalize(raw.catalogMatch) && !raw.catalogMatch.isEmpty }
-            ?? bestMatch(for: [raw.name, raw.description], in: foods)
-            ?? fromLargeDatabase(raw)
+    static func ground(_ raw: Raw, in foods: [Food], pick: FoodChooser.Pick? = nil) -> FoodAI.Item? {
+        let hasEstimate = raw.per100.kcal > 0 || raw.per100.protein + raw.per100.carbs + raw.per100.fat > 0
+        let food: Food?
+        if let pick, let chosen = pick.food {
+            food = chosen
+        } else if pick != nil, hasEstimate {
+            // Jev is sure no entry is this food: the model's own values, marked as an estimate
+            food = nil
+        } else {
+            food = foods.first { FoodDatabase.normalize($0.name) == FoodDatabase.normalize(raw.catalogMatch) && !raw.catalogMatch.isEmpty }
+                ?? bestMatch(for: [raw.name, raw.description], in: foods)
+                ?? fromLargeDatabase(raw)
+        }
         var grams = raw.grams
         if let food, raw.portionCount > 0 { grams = raw.portionCount * food.portion }
         if grams <= 0, let food { grams = food.portion }
@@ -244,7 +258,7 @@ enum MealRecognizer {
             return FoodAI.Item(name: food.name, grams: grams, per100: food.per100, confidence: raw.confidence, fromTable: true,
                                detail: raw.name == food.name ? raw.description : raw.name)
         }
-        guard raw.per100.kcal > 0 || raw.per100.protein + raw.per100.carbs + raw.per100.fat > 0 else { return nil }
+        guard hasEstimate else { return nil }
         return FoodAI.Item(name: raw.name, grams: grams, per100: raw.per100, confidence: raw.confidence, fromTable: false, detail: raw.description)
     }
 

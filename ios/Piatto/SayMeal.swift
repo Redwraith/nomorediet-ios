@@ -145,8 +145,17 @@ struct SayMealCard: View {
         var added: [FoodEntry] = []
         var summary: [String] = []
         var problems: [String] = []
-        for part in parts.isEmpty ? [MealSplitter.Part(slot: nil, text: said)] : parts {
-            let slot = part.slot ?? MealSlot.now
+        let allParts = parts.isEmpty ? [MealSplitter.Part(slot: nil, text: said)] : parts
+        // parts that do not name their meal: Jev decides from food and time, else the time of day
+        let unnamed = allParts.filter { $0.slot == nil }.map(\.text)
+        var guessed = await MealSlotChooser.choose(unnamed)
+        for part in allParts {
+            var slot = MealSlot.now
+            if let named = part.slot {
+                slot = named
+            } else if !guessed.isEmpty, let judged = guessed.removeFirst() {
+                slot = judged
+            }
             do {
                 let result = try await MealRecognizer.recognize(MealRecognizer.Input(text: part.text), foods: foods)
                 var kcal = 0.0

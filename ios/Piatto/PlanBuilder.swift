@@ -352,7 +352,7 @@ struct ExercisePicker: View {
                             ForEach(options, id: \.self) { option in
                                 Button { pick(option); dismiss() } label: {
                                     HStack(spacing: 12) {
-                                        MovementFigure(pattern: option.pattern, size: 44)
+                                        MovementFigure(pattern: option.pattern, size: 44, animated: false)
                                             .background(Theme.background, in: RoundedRectangle(cornerRadius: 10))
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
                                         Text(option.name).foregroundStyle(.primary)

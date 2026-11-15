@@ -171,27 +171,76 @@ final class ExerciseCatalog: ObservableObject {
     ]
 }
 
-/// The catalog animation: the 4 illustrated frames in a loop, or Tempra's stick figure while they load.
+/// Downloaded animation frames, decoded once and kept in memory, so the loop never waits for the network or
+/// for decoding (the cause of the jerky frames: each frame used to be fetched again as it came up).
+actor FrameCache {
+    static let shared = FrameCache()
+    private var images: [URL: UIImage] = [:]
+    private var running: [URL: Task<UIImage?, Never>] = [:]
+
+    func image(_ url: URL) async -> UIImage? {
+        if let image = images[url] { return image }
+        if let task = running[url] { return await task.value }
+        let task = Task<UIImage?, Never> {
+            guard let (data, _) = try? await URLSession.shared.data(from: url), let image = UIImage(data: data) else { return nil }
+            // decode now, off the main thread, not at the first draw
+            return await image.byPreparingForDisplay() ?? image
+        }
+        running[url] = task
+        let image = await task.value
+        running[url] = nil
+        if let image {
+            if images.count > 120 { images.removeAll() }
+            images[url] = image
+        }
+        return image
+    }
+
+    func frames(_ urls: [URL]) async -> [UIImage] {
+        await withTaskGroup(of: (Int, UIImage?).self) { group in
+            for (i, url) in urls.enumerated() { group.addTask { (i, await self.image(url)) } }
+            var out = [(Int, UIImage)]()
+            for await (i, image) in group { if let image { out.append((i, image)) } }
+            return out.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+    }
+}
+
+/// The catalog animation: the 4 illustrated frames in a loop with a short cross-fade, or Tempra's stick figure
+/// until all of them are ready.
 struct CatalogFigure: View {
     var id: String
     var pattern: String
     var size: CGFloat
     @ObservedObject private var profile = ProfileStore.shared
-    @State private var frame = 0
-    private let tick = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
+    @State private var frames: [UIImage] = []
+    @State private var visible = false
 
     var body: some View {
-        let urls = ExerciseCatalog.frames(id, female: profile.profile.sex == .donna)
-        AsyncImage(url: urls[frame % urls.count], transaction: Transaction(animation: nil)) { phase in
-            if let image = phase.image {
-                image.resizable().scaledToFit()
+        Group {
+            if frames.count >= 2 {
+                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !visible)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate / 0.7
+                    let index = Int(t) % frames.count
+                    let fade = min(1, (t - floor(t)) / 0.25)
+                    ZStack {
+                        Image(uiImage: frames[(index + frames.count - 1) % frames.count]).resizable().scaledToFit()
+                        Image(uiImage: frames[index]).resizable().scaledToFit().opacity(fade)
+                    }
+                }
+            } else if let only = frames.first {
+                Image(uiImage: only).resizable().scaledToFit()
             } else {
                 MovementFigure(pattern: pattern, size: size)
             }
         }
         .frame(width: size, height: size)
         .background(Color.white.opacity(0.9))
-        .onReceive(tick) { _ in frame += 1 }
+        .onAppear { visible = true }
+        .onDisappear { visible = false }
+        .task(id: id + (profile.profile.sex == .donna ? "f" : "m")) {
+            frames = await FrameCache.shared.frames(ExerciseCatalog.frames(id, female: profile.profile.sex == .donna))
+        }
     }
 }
 

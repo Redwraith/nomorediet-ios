@@ -496,7 +496,10 @@ struct ExerciseCard: View {
                     .background(Theme.background, in: RoundedRectangle(cornerRadius: 14))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(label) · \(exercise.name)").font(.headline)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(label) · \(exercise.name)").font(.headline).foregroundStyle(.primary)
+                        Image(systemName: "arrow.triangle.2.circlepath").font(.caption).foregroundStyle(Theme.accent)
+                    }
                     if exercise.name != original.name {
                         Text("al posto di \(original.name)").font(.caption2).foregroundStyle(.secondary)
                     }
@@ -512,6 +515,12 @@ struct ExerciseCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // tap the exercise to change it on the spot
+            .contentShape(Rectangle())
+            .onTapGesture { choosingSwap = true }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Tocca per cambiare esercizio")
+            .accessibilityIdentifier("exercise-\(label)")
             HStack(spacing: 8) {
                 Button { choosingSwap = true } label: { Label("Cambia esercizio", systemImage: "arrow.triangle.2.circlepath") }
                     .glassButton().controlSize(.small)
@@ -792,6 +801,7 @@ struct SwapSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var always = false
     @State private var busy = Equipment.busyNow
+    @State private var browsingAll = false
 
     var body: some View {
         NavigationStack {
@@ -815,12 +825,18 @@ struct SwapSheet: View {
                 } header: { Text("Cosa è occupato adesso?") } footer: {
                     Text("Gli esercizi con un attrezzo occupato finiscono in fondo alla lista.")
                 }
-                Section("Alternative") {
+                Section {
+                    Button { browsingAll = true } label: {
+                        Label("Scegli tra tutti gli esercizi", systemImage: "list.bullet.rectangle.portrait")
+                    }
+                    .accessibilityIdentifier("swap-all")
+                } footer: { Text("Tutti i gruppi muscolari, il catalogo completo o un esercizio scritto da te.") }
+                Section("Stesso muscolo") {
                     ForEach(ExerciseSwaps.available(for: original, busy: busy), id: \.self) { option in
                         let free = Equipment.isFree(option.name, busy: busy)
                         Button { pick(option.name == original.name ? nil : option, always) } label: {
                             HStack(spacing: 12) {
-                                MovementFigure(pattern: option.pattern, size: 64)
+                                MovementFigure(pattern: option.pattern, size: 64, animated: false)
                                     .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                 VStack(alignment: .leading, spacing: 2) {
@@ -842,6 +858,12 @@ struct SwapSheet: View {
             .navigationTitle("Al posto di \(original.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() }.accessibilityIdentifier("swap-close") } }
+            .sheet(isPresented: $browsingAll) {
+                ExercisePicker(taken: [original.name.lowercased()]) { option in
+                    // the picker closes itself; then this sheet closes with the choice
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { pick(option, always) }
+                }
+            }
         }
     }
 }

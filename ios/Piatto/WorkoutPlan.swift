@@ -374,8 +374,12 @@ struct MovementFigure: View {
         return (a, b)
     }
 
+    /// Drawn only while on screen: off-screen figures (scrolled away, behind a sheet) cost nothing.
+    @State private var visible = false
+
     var body: some View {
-        TimelineView(.animation(paused: !animated)) { timeline in
+        // 30 frames a second is smooth for this movement and leaves the main thread free while scrolling
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !animated || !visible)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             let poses = Self.poses(pattern)
             let now = Self.ease(t, animated: animated)
@@ -392,6 +396,9 @@ struct MovementFigure: View {
             }
         }
         .frame(width: size, height: size)
+        .drawingGroup()
+        .onAppear { visible = true }
+        .onDisappear { visible = false }
         .accessibilityLabel("Animazione del movimento")
     }
 
