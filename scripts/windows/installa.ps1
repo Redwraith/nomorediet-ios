@@ -29,7 +29,7 @@ foreach ($repo in @("claration/impactor", "khcrysalis/PlumeImpactor")) {
 if (-not $rel) { throw "Non riesco a leggere le release di Impactor: scaricalo a mano da https://github.com/claration/impactor/releases/latest" }
 $asset = $rel.assets | Where-Object { $_.name -eq "Impactor-windows-$arch-setup.exe" } | Select-Object -First 1
 if (-not $asset) { $asset = $rel.assets | Where-Object { $_.name -eq "Impactor-windows-$arch-portable.exe" } | Select-Object -First 1 }
-if (-not $asset) { throw "Non trovo Impactor per Windows $arch: scaricalo a mano da $($rel.html_url) (file Impactor-windows-$arch-setup.exe)" }
+if (-not $asset) { throw "Non trovo Impactor per Windows ${arch}: scaricalo a mano da $($rel.html_url) (file Impactor-windows-$arch-setup.exe)" }
 $impactor = Join-Path $dir $asset.name
 Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $impactor
 Unblock-File $impactor
